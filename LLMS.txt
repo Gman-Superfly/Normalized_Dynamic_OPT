@@ -1,0 +1,487 @@
+# LLMS.txt - NormalizedDynamics Project Overview
+
+## Project Description
+
+**NormalizedDynamics (normdyn)** is a specialized kernel-based manifold learning algorithm 
+designed for geometric relationship preservation with a focus on biological trajectory analysis. 
+The project provides both a core algorithm implementation and a comprehensive web-based research platform 
+for comparing manifold learning methods on scientific datasets.
+
+**Primary Purpose**: Realtime features for small or live datasets, preserve continuous processes 
+(especially usefl in developmental trajectories) in single-cell RNA-seq data while maintaining 
+computational efficiency for small-to-medium datasets.
+
+**Key Innovation**: Physics-inspired iterative dynamics with adaptive bandwidth selection that 
+prevents fragmentation of continuous biological processes, unlike traditional methods that can create 
+artificial discrete clusters.
+
+## Project Architecture
+
+### Core Algorithm (`src/`)
+- **`normalized_dynamics_optimized.py`**: Main algorithm implementation using PyTorch
+  - Physics-inspired kernel-weighted dynamics: `h^(t+1) = h^(t) + α × Δt × (G[h^(t)] - h^(t)) + η`
+  - Adaptive bandwidth based on local distance variance (baseline K=20, configurable; adaptive K: 5-20 neighbors)
+  - Scale-preserving iterative updates
+  - Multi-criteria convergence detection
+  - Streaming capability for real-time applications
+
+- **`normalized_dynamics_smart_k.py`**: Enhanced version with intelligent K parameter adaptation
+  - Dataset size-aware K scaling (baseline K=20, configurable; 500 samples: K≈8, 5000+ samples: K≈35)
+  - Smart adaptation strategies: 'smart', 'density', 'size', 'fixed'
+  - Multi-factor K optimization (density, curvature, consistency, efficiency)
+  - Optimized for smart sampling scenarios and varying dataset characteristics
+
+- **`smart_sampling.py`**: Intelligent sampling strategies for large datasets
+  - Spatial stratified sampling preserving tissue architecture
+  - Expression diversity sampling using clustering
+  - Hybrid sampling with configurable 70%/30% spatial/expression weighting (adjustable for task-specific needs)
+  - Biological structure preservation during downsampling
+
+- **`streaming_simulator.py`**: Real-time sensor data simulation for streaming demos
+  - Multi-sensor data generation with controllable anomalies
+  - Used for demonstrating real-time manifold learning capabilities
+
+- **`run_tests.py`**: Master test orchestration utility
+  - Comprehensive test suite execution with reproducible seeding
+  - Two-phase testing: basic unit tests + comprehensive visualizations
+  - Results organization with timestamped scientific figures
+  - Session-wide reproducibility control for development/CI
+
+- **`test_smart_sampling_quick.py`**: Quick smart sampling analysis test utility
+  - Lightweight debugging tool for smart sampling functionality
+  - Non-interactive backend testing with progress indicators
+  - Direct import and execution of smart sampling enhanced analysis
+  - Timeout simulation and error handling for development debugging
+
+### Root Directory Utilities
+- **`app.py`**: Flask web application for interactive demonstrations and analysis
+- **`requirements.txt`**: Complete dependency specifications
+
+### Utility Scripts (`utils/`)
+- **`download_gaia_data.py`**: GAIA astronomical data acquisition utility
+- **`prepare_datasets.py`**: Dataset preprocessing and preparation scripts
+
+### Additional Utilities
+- **`tests/live_sensor_demo.py`**: Standalone real-time sensor data demonstration (moved to tests/)
+
+### Testing & Validation (`tests/`)
+**Comprehensive scientific validation framework**:
+
+#### Core Test Modules:
+- **`test_normalized_dynamics.py`**: Basic unit tests for algorithm correctness
+- **`test_comprehensive_visualizations.py`**: Visual validation across multiple datasets
+- **`test_biological_metrics.py`**: Standard biological evaluation metrics
+- **`test_enhanced_biological_metrics.py`**: Advanced DPT-based trajectory analysis
+- **`test_enhanced_biological_metrics_smart_sampling.py`**: Smart sampling impact on biological metrics
+- **`test_pancreas_endocrinogenesis.py`**: Single-cell RNA-seq developmental validation
+- **`test_synthetic_developmental.py`**: Artificial developmental trajectory testing
+- **`test_gaia_data.py`**: Astronomical survey data analysis
+- **`test_wine_dataset.py`**: Chemical classification benchmark testing
+- **`test_mouse_brain_cortical.py`**: Cortical layer organization analysis
+- **`test_real_data_visualization.py`**: Real-world dataset visualization testing
+
+#### Specialized Evaluation Modules:
+- **`biological_metrics.py`**: Core metrics for developmental biology validation
+- **`enhanced_biological_metrics.py`**: Advanced trajectory coherence assessment
+- **`synthetic_developmental_datasets.py`**: Generate complex artificial developmental trajectories
+- **`smart_sampling_enhanced_analysis.py`**: Comprehensive smart sampling performance evaluation
+- **`generate_publication_figures.py`**: Publication-quality scientific figure generation
+
+#### Test Infrastructure:
+- **`results/`**: Test output repository with timestamped results
+- **`static/`**: Static test resources and reference data
+- **`README.md`**: Test methodology documentation
+
+### Web Interface (`app.py` + `templates/` + `static/`)
+**Flask-based research platform** with multiple analysis modules:
+
+#### Main Pages:
+- **Index (`/`)**: Overview and navigation hub
+- **Pancreas Analysis (`/pancreas-analysis`)**: Single-cell RNA-seq developmental trajectory analysis
+- **Biological Metrics (`/biological-metrics`)**: Enhanced evaluation framework using DPT pseudotime
+- **Smart Sampling (`/smart-sampling`)**: Intelligent downsampling demonstrations with configurable spatial/expression balance
+- **GAIA Analysis (`/gaia-analysis`)**: Astronomical data analysis (stellar classifications)
+- **Synthetic Developmental (`/synthetic-developmental`)**: Artificial trajectory datasets
+- **Mouse Brain Cortical (`/mouse-brain-cortical`)**: Cortical layer organization analysis
+- **Streaming Demo (`/streaming-demo`)**: Real-time manifold learning visualization
+
+#### API Endpoints:
+- `/run`, `/run_wine`, `/run_pancreas`: Execute analyses and return visualizations
+- `/api/streaming-data`: Server-sent events for real-time streaming data
+- `/api/biological_metrics`: Enhanced biological evaluation with DPT pseudotime
+- `/api/synthetic-developmental`: Synthetic trajectory generation and analysis
+- `/api/smart_sampling/*`: Smart sampling analysis and progress tracking
+
+### Data Management (`data/`)
+**Multi-domain scientific datasets**:
+- **Single-cell biology**: `Pancreas/endocrinogenesis_day15.h5ad` (3,696 cells × 27,998 genes)
+- **Astronomy**: `gaia_data_*.csv` (stellar survey data with various sample sizes)
+- **Text analysis**: Wikipedia processing datasets
+- **Archives**: Historical results and model states
+
+### Results & Visualization (`static/results/`)
+**Automated scientific figure generation**:
+- Comparative algorithm performance charts
+- Biological trajectory preservation visualizations
+- Real-time streaming analysis plots
+- Publication-quality figure exports with timestamps
+
+## Key Components & Functions
+
+### Algorithm Implementations
+
+#### NormalizedDynamicsOptimized Class
+**Standard implementation** in `src/normalized_dynamics_optimized.py`:
+
+```python
+class NormalizedDynamicsOptimized(torch.nn.Module):
+    def __init__(self, dim=2, k=20, alpha=1.0, max_iter=50, 
+                 noise_scale=0.01, eta=0.01, adaptive_params=True)
+    
+    def forward(self, x):  # One iteration of embedding update
+    def fit_transform(self, data):  # Complete embedding generation
+    def update_embedding(self, new_point):  # Streaming updates
+```
+
+#### NormalizedDynamicsSmartK Class
+**Enhanced implementation with intelligent K adaptation** in `src/normalized_dynamics_smart_k.py`:
+
+```python
+class NormalizedDynamicsSmartK(torch.nn.Module):
+    def __init__(self, dim=2, k_base=None, alpha=1.0, max_iter=50,
+                 k_adaptation_strategy='smart', adaptive_params=True)
+    
+    def adaptive_k_selection(self, x, dists):  # Smart K parameter selection
+    def compute_optimal_k_base(self, n_samples, n_features):  # Dataset-aware K
+    def fit_transform(self, X):  # With detailed K adaptation logging
+```
+
+**Key Parameters**:
+- `dim`: Target embedding dimensions (typically 2 for visualization)
+- `k`/`k_base`: Number of neighbors (baseline K=20, configurable; adaptive: 5-50 based on dataset size and density)
+- `alpha`: Step size parameter affecting convergence speed
+- `max_iter`: Maximum iterations (typically converges ~35 iterations)
+- `adaptive_params`: Enable dynamic parameter adjustment
+- `k_adaptation_strategy`: 'smart' (full), 'density', 'size', or 'fixed'
+
+### Flask Web Application Structure
+**Main application** in `app.py`:
+
+```python
+# Core analysis endpoints
+@app.route('/run', methods=['POST'])  # GAIA astronomical data
+@app.route('/run_pancreas', methods=['POST'])  # Single-cell RNA-seq
+@app.route('/api/biological_metrics', methods=['POST'])  # Enhanced evaluation
+
+# Real-time streaming
+@app.route('/api/streaming-data')  # Server-sent events for live data
+@app.route('/api/inject-anomaly', methods=['POST'])  # Anomaly injection control
+```
+
+### Enhanced Biological Evaluation
+**Scientific rigor framework** in `tests/enhanced_biological_metrics.py`:
+
+- **Diffusion Pseudotime (DPT)**: Continuous developmental ordering from gene expression
+- **Multi-scale trajectory coherence**: Neighborhood consistency across scales (k=5,10,20,30)
+- **Bifurcation preservation**: Parent-child temporal ordering validation
+- **Fragmentation detection**: Identifies artificial clustering within continuous processes
+
+### Smart Sampling Configuration
+**Task-adaptive sampling strategy** in `src/smart_sampling.py`:
+
+- **Default balance**: 70% spatial sampling + 30% expression diversity sampling
+- **Configurable weighting**: `spatial_weight` parameter (0.0 to 1.0)
+  - **0.7 (default)**: Balanced for general analysis
+  - **0.8-0.9**: Spatial analysis focus (tissue architecture preservation)
+  - **0.3-0.5**: Cell type analysis focus (maximum diversity)
+  - **1.0**: Pure spatial sampling
+  - **0.0**: Pure expression diversity sampling
+- **Task-specific optimization**: Adjustable based on research objectives and dataset characteristics
+
+### K Parameter Adaptation Strategies
+**Smart neighbor selection** in `src/normalized_dynamics_smart_k.py`:
+
+- **'smart' strategy**: Multi-factor optimization considering:
+  - **Local density** (40% weight): Dense regions use fewer neighbors, sparse regions use more
+  - **Manifold curvature** (30% weight): High curvature areas need more neighbors for stability  
+  - **Neighborhood consistency** (20% weight): Tests different K values for optimal overlap
+  - **Computational efficiency** (10% weight): Limits K for large datasets (>5000 samples)
+
+- **'density' strategy**: Adapts K based purely on local density patterns
+- **'size' strategy**: Simple dataset size-based K scaling
+- **'fixed' strategy**: Uses base K without adaptation
+
+**Automatic K computation** (from configurable baseline K=20):
+- Small datasets (≤500): K ≈ 8-15 (conservative for stability)
+- Medium datasets (500-2000): K ≈ 12-25 (balanced connectivity)  
+- Large datasets (2000-5000): K ≈ 25-35 (higher for global structure)
+- Very large (>5000): K ≈ 35+ (maximum connectivity, efficiency-limited)
+- **Note**: Baseline K=20 can be adjusted to best suit the specific task and dataset characteristics
+
+## Technical Stack
+
+### Core Dependencies
+- **PyTorch 2.0.1**: GPU-accelerated tensor operations and automatic differentiation
+- **NumPy 1.24.3**: Numerical computing foundation
+- **Scikit-learn 1.3.0**: Baseline algorithm implementations (t-SNE, preprocessing)
+- **Flask 3.0.0**: Web framework for research platform
+- **Matplotlib 3.7.2 + Seaborn 0.12.2**: Scientific visualization
+
+### Specialized Scientific Libraries
+- **scanpy 1.9.3 + anndata 0.9.2**: Single-cell RNA-seq analysis pipeline
+- **astroquery 0.4.6 + astropy 5.3.4**: Astronomical data access and processing
+- **UMAP-learn 0.5.3**: Uniform Manifold Approximation baseline comparison
+
+### Data Processing
+- **Polars 0.20.2**: High-performance DataFrame operations
+- **h5py 3.9.0**: HDF5 single-cell data format support
+- **scipy 1.11.1**: Scientific computing utilities
+
+## Algorithm Characteristics
+
+### Computational Profile
+- **Optimal scale**: 100-5,000 samples with excellent performance
+- **Time complexity**: O(T × n²d) where T ≈ 35 iterations
+- **Space complexity**: O(n²) for distance matrices
+- **Runtime examples**: 500 samples (~0.8s), 2000 samples (~20s), 10K samples (~165s)
+
+### Scientific Strengths
+- **Continuous trajectory preservation**: Maintains smooth biological transitions
+- **Adaptive bandwidth**: Responds to local density variations (more neighbors for heterogeneous regions)
+- **Global structure preservation**: Better than t-SNE/UMAP for large-scale relationships
+- **Real-time capability**: Streaming updates for live monitoring applications
+
+### Validated Applications
+- **Single-cell developmental biology**: Pancreas endocrinogenesis trajectory preservation
+- **Astronomical surveys**: GAIA stellar data with H-R diagram structure preservation
+- **Multi-scale scientific data**: Wine classification, synthetic benchmarks
+- **Real-time monitoring**: Sensor data streams with anomaly detection
+
+## Usage Examples
+
+### Basic Algorithm Usage
+```python
+# Standard implementation (baseline K=20, configurable)
+from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized
+
+nd = NormalizedDynamicsOptimized(
+    dim=2, k=30,  # Custom K value (default baseline is 20)
+    max_iter=100, adaptive_params=True, 
+    target_local_structure=0.98
+)
+embedding = nd.fit_transform(single_cell_data)
+
+# Smart K adaptation implementation (baseline K=20, configurable)
+from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+
+nd_smart = NormalizedDynamicsSmartK(
+    dim=2, k_base=25,  # Custom baseline K (default is 20)
+    k_adaptation_strategy='smart',
+    max_iter=100, adaptive_params=True
+)
+embedding = nd_smart.fit_transform(single_cell_data)
+
+# Or use convenience function for optimal settings
+from src.normalized_dynamics_smart_k import create_smart_k_algorithm
+nd_auto = create_smart_k_algorithm(dataset_size=2000, strategy='smart')
+```
+
+### Web Platform Analysis
+```bash
+# Start the research platform
+python app.py
+
+# Access analyses:
+# http://localhost:5000/pancreas-analysis - Single-cell trajectories
+# http://localhost:5000/biological-metrics - Enhanced evaluation
+# http://localhost:5000/streaming-demo - Real-time visualization
+```
+
+### Running Comparative Evaluations
+```bash
+# Start the web research platform (main interface)
+python app.py
+# Access analyses at http://localhost:5000/
+
+# Individual test modules (backend)
+python tests/test_enhanced_biological_metrics.py
+python tests/test_synthetic_developmental.py
+python tests/test_gaia_data.py
+
+# Additional utility: automated test runner
+python src/run_tests.py
+```
+
+### Smart Sampling Usage
+```python
+from src.smart_sampling import BiologicalSampler
+
+# Default 70/30 spatial/expression balance
+sampler = BiologicalSampler(target_size=15000)
+indices = sampler.hybrid_sample(data, spatial_coords, spatial_weight=0.7)
+
+# Task-specific configurations:
+# Spatial analysis focus (tissue architecture)
+indices = sampler.hybrid_sample(data, spatial_coords, spatial_weight=0.9)
+
+# Cell type analysis focus (maximum diversity)  
+indices = sampler.hybrid_sample(data, spatial_coords, spatial_weight=0.3)
+```
+
+## File Organization
+
+### Root Directory
+```
+normdyn/
+├── app.py                              # Flask web application
+├── requirements.txt                    # Complete dependency specifications
+├── pancreas_analysis_results.csv       # Biological validation results
+├── wine_classification_results.csv     # Classification benchmark results
+└── LLMS.txt                            # This project overview
+```
+
+### Core Implementation
+```
+src/
+├── normalized_dynamics_optimized.py    # Standard algorithm implementation
+├── normalized_dynamics_smart_k.py      # Enhanced with smart K adaptation
+├── smart_sampling.py                   # Intelligent downsampling strategies
+├── streaming_simulator.py              # Real-time data simulation
+├── run_tests.py                        # Master test orchestration utility
+├── test_smart_sampling_quick.py        # Quick smart sampling test utility
+└── __init__.py
+```
+
+### Web Research Platform
+```
+templates/                              # HTML pages for each analysis
+├── biological_metrics.html             # Enhanced biological evaluation
+├── gaia_analysis.html                  # Astronomical data analysis
+├── index.html                          # Main landing page
+├── mouse_brain_cortical.html           # Brain tissue analysis
+├── pancreas_analysis.html              # Single-cell RNA-seq analysis
+├── smart_sampling.html                 # Intelligent sampling demonstrations
+├── streaming_demo.html                 # Real-time streaming visualization
+└── synthetic_developmental.html        # Artificial trajectory datasets
+
+static/
+├── css/
+│   └── style.css                       # Application styling
+├── js/
+│   └── main.js                         # Interactive functionality
+└── results/                            # Extensive generated scientific visualizations
+    ├── biological_metrics_comparison_*.png      # Biological metrics results (timestamped)
+    ├── GAIA_comparison_*.png                    # Astronomical analysis results (timestamped)
+    ├── pancreas_endocrinogenesis_comparison_*.png # Single-cell trajectory results
+    ├── smart_sampling_enhanced_analysis_*.png   # Smart sampling performance results
+    ├── synthetic_developmental_comparison_*.png # Synthetic trajectory results
+    ├── wine_comparison_*.png                    # Wine dataset classification results
+    ├── comprehensive/                           # Comprehensive comparison figures
+    ├── individual/                              # Individual algorithm test results
+    └── publication/                             # Publication-ready figures
+```
+
+### Scientific Validation
+```
+tests/
+├── __init__.py                          # Test package initialization
+├── biological_metrics.py               # Core evaluation metrics
+├── enhanced_biological_metrics.py      # Advanced trajectory assessment
+├── generate_publication_figures.py     # Publication-quality figure generation
+├── live_sensor_demo.py                 # Standalone real-time demonstration
+├── smart_sampling_enhanced_analysis.py # Smart sampling performance evaluation
+├── synthetic_developmental_datasets.py # Trajectory generation utilities
+├── test_biological_metrics.py          # Standard biological evaluation
+├── test_comprehensive_visualizations.py # Visual validation framework
+├── test_enhanced_biological_metrics.py # Advanced DPT-based analysis
+├── test_enhanced_biological_metrics_smart_sampling.py # Smart sampling impact
+├── test_gaia_data.py                   # Astronomical survey analysis
+├── test_mouse_brain_cortical.py        # Brain tissue organization
+├── test_normalized_dynamics.py         # Basic unit tests
+├── test_pancreas_endocrinogenesis.py   # Single-cell developmental validation
+├── test_real_data_visualization.py     # Real-world dataset testing
+├── test_synthetic_developmental.py     # Artificial trajectory testing
+├── test_wine_dataset.py                # Chemical classification benchmark
+└── results/                            # Test output repository with organized subdirectories
+    ├── bodenmiller/                    # Bodenmiller dataset results
+    ├── comprehensive/                  # Comprehensive test visualizations
+    ├── individual/                     # Individual algorithm test results
+    └── pancreas/                       # Pancreas-specific analysis results
+```
+
+### Data Management
+```
+data/
+├── cortex_data.zip                     # Mouse brain cortical expression data
+├── gaia_data_10000.csv                 # GAIA astronomical data (10K samples)
+├── gaia_data_2000.csv                  # GAIA astronomical data (2K samples)
+├── gaia_data_500.csv                   # GAIA astronomical data (500 samples)
+├── gaia_data_5000.csv                  # GAIA astronomical data (5K samples)
+├── gaia_data.csv                       # Main GAIA astronomical dataset
+├── New Text Document.txt               # Text analysis placeholder
+└── Pancreas/
+    ├── endocrinogenesis_day15.h5ad     # Single-cell RNA-seq developmental data
+    └── endocrinogenesis_day15.zip      # Compressed single-cell data
+```
+
+### Documentation & Methodology
+```
+docs/
+├── METHODOLOGY_TRANSPARENCY.md                    # Enhanced evaluation methodology
+├── NormalizedDynamics_Technical_Documentation.py  # Complete algorithm specification
+├── PROJECT_ORGANIZATION_PLAN.md                   # Repository organization and strategy
+├── Publication_Summary.md                         # Research findings summary
+├── README_overview.md                             # Project overview documentation
+├── README_Scientific_Archive.md                   # Comprehensive scientific documentation
+├── README_SMART_SAMPLING_ACHIEVEMENT.md           # Smart sampling achievements
+├── README_tests.md                                # Test documentation
+├── REPOSITORY_EXCELLENCE_SUMMARY.md               # Excellence documentation
+├── SMART_SAMPLING.md                              # Sampling methodology documentation
+├── SMART_SAMPLING_RESULTS.md                      # Smart sampling analysis results
+└── TEST_SETUP_SUMMARY.md                          # Test infrastructure documentation
+```
+
+### Utilities
+```
+utils/
+├── download_gaia_data.py               # GAIA data acquisition utility
+└── prepare_datasets.py                 # Dataset preprocessing scripts
+```
+
+## Research Focus & Scientific Positioning
+
+### Primary Research Domain
+**Computational Biology**: Single-cell RNA-seq developmental trajectory analysis
+- Validated on pancreas endocrinogenesis (3,696 cells, 8 developmental stages)
+- Preserves continuous developmental flow vs. discrete clustering artifacts
+- Uses diffusion pseudotime (DPT) for biologically accurate evaluation
+
+### Broader Scientific Applications
+**Multi-domain scientific data analysis**:
+- **Astronomy**: Stellar classification preserving H-R diagram structure
+- **Chemistry**: Multi-parameter laboratory measurements with geometric preservation
+- **Real-time systems**: Live monitoring with sub-second embedding updates
+
+### Methodological Contributions
+- **Enhanced biological evaluation**: DPT pseudotime instead of discrete stage assignment
+- **Adaptive bandwidth mechanism**: Distance variance-based neighbor selection
+- **Smart K parameter adaptation**: Multi-factor optimization (density, curvature, consistency, efficiency)
+- **Physics-inspired dynamics**: Free energy principle implementation
+- **Scale preservation**: Maintains feature-wise standard deviation during optimization
+- **Configurable smart sampling**: Task-adaptive 70%/30% spatial/expression balance (adjustable based on analysis goals)
+
+## Performance Characteristics
+
+### Benchmark Results Summary
+- **Pancreas endocrinogenesis**: 0.660 trajectory smoothness (competitive with t-SNE 0.696, UMAP 0.686)
+- **GAIA 10K stars**: 0.0089 distortion vs 0.0156 t-SNE (45% better geometric preservation)
+- **Wine dataset**: 0.0158 distortion with excellent class separation in 0.25s
+- **Multi-scale circles**: 0.0016 distortion showcasing geometric specialization
+
+### Computational Trade-offs
+- **Speed vs. accuracy**: Prioritizes geometric truthfulness; O(n²) scaling limits large datasets
+- **Real-time capability**: Excellent for small datasets (<2000 samples) enabling interactive exploration
+- **Scientific utility**: Maintains physically meaningful relationships in visualization
+
+This project represents a specialized contribution to manifold learning with particular strengths in biological trajectory preservation 
+and scientific data analysis where geometric fidelity is essential for accurate interpretation. 
