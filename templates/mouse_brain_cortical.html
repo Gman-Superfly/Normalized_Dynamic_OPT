@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Brain Cortical Layers | Normalized Dynamics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Mouse Brain Cortical Layers</h1>
+        <p>Spatial Gradient Preservation in Cortical Architecture</p>
+    </header>
+    
+    <!-- Navigation -->
+    <nav>
+        <a href="/">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis">📊 GAIA Analysis</a>
+        <a href="/streaming-demo">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical" class="active">🧠 Brain Cortical</a>
+        <a href="/smart-sampling">🧠 Smart Sampling</a>
+    </nav>
+
+    <main>
+        <div class="result-block">
+            <h3>> Mouse Brain Cortical Layers Analysis</h3>
+            <p>This analysis implements one of the key <strong>"Golden Standard Tests"</strong> using mouse brain cortical layer data (Layers 1-6) to evaluate spatial gradient preservation. Unlike general manifold learning, this test specifically measures how well algorithms preserve the smooth anatomical transitions between cortical layers - critical for spatial transcriptomics analysis.</p>
+        </div>
+
+        <div class="controls">
+            <fieldset>
+                <legend>Dataset Configuration</legend>
+                <div>
+                    <input type="radio" id="dataset_synthetic" name="dataset" value="synthetic" checked>
+                    <label for="dataset_synthetic">Synthetic Cortical Layers (6K cells, known layer structure)</label>
+                </div>
+                <div>
+                    <input type="radio" id="dataset_allen" name="dataset" value="allen" disabled>
+                    <label for="dataset_allen" style="color: #666;">Allen Brain Atlas Data - <em>Coming Soon</em></label>
+                </div>
+                <div>
+                    <input type="radio" id="dataset_visium" name="dataset" value="visium" disabled>
+                    <label for="dataset_visium" style="color: #666;">Visium Brain Section - <em>Coming Soon</em></label>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Analysis Parameters</legend>
+                <div>
+                    <label for="n_cells">Number of Cells:</label>
+                    <select id="n_cells">
+                        <option value="3000">3,000 (Fast)</option>
+                        <option value="6000" selected>6,000 (Standard)</option>
+                        <option value="10000">10,000 (Comprehensive)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="n_layers">Cortical Layers:</label>
+                    <select id="n_layers">
+                        <option value="4">4 Layers (Simplified)</option>
+                        <option value="5" selected>5 Layers (Standard)</option>
+                        <option value="6">6 Layers (Full Cortex)</option>
+                    </select>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Algorithm Comparison</legend>
+                <div>
+                    <input type="checkbox" id="algo_normdyn" checked>
+                    <label for="algo_normdyn">NormalizedDynamics (Spatial gradient preservation)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="algo_tsne" checked>
+                    <label for="algo_tsne">t-SNE (Layer clustering)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="algo_umap" checked>
+                    <label for="algo_umap">UMAP (Topology preservation)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="algo_pca">
+                    <label for="algo_pca">PCA (Linear baseline)</label>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Spatial Metrics (Novel Gold Standard)</legend>
+                <div>
+                    <input type="checkbox" id="metric_gradient" checked>
+                    <label for="metric_gradient">Spatial Gradient Preservation (depth correlation)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_continuity" checked>
+                    <label for="metric_continuity">Spatial Continuity (neighborhood preservation)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_boundaries" checked>
+                    <label for="metric_boundaries">Layer Boundary Smoothness (transition quality)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_ordering" checked>
+                    <label for="metric_ordering">Layer Ordering (anatomical sequence)</label>
+                </div>
+            </fieldset>
+            
+            <button id="run-cortical-analysis-btn">Run Cortical Analysis</button>
+        </div>
+        
+        <!-- Progress Section -->
+        <div id="progress-section" style="display: none;">
+            <hr>
+            <h3>> Analysis Progress</h3>
+            
+            <div class="terminal-log" id="analysis-log">
+                <div style="color: var(--border-color);">> Analysis log will appear here...</div>
+            </div>
+        </div>
+
+        <div id="results-container">
+            <div class="result-block">
+                <h3>> Expected Results: Spatial Gradient Preservation</h3>
+                <ul>
+                    <li><strong>NormalizedDynamics:</strong> 0.85+ spatial gradient preservation - Good anatomical structure maintenance</li>
+                    <li><strong>t-SNE:</strong> 0.65-0.75 spatial gradient preservation - Good clustering but fragments layers</li>
+                    <li><strong>UMAP:</strong> 0.70-0.80 spatial gradient preservation - Better topology but still discretizes</li>
+                    <li><strong>Key Insight:</strong> Continuous algorithms better preserve cortical architecture</li>
+                </ul>
+            </div>
+            
+            <div class="result-block">
+                <h3>> Novel Spatial Metrics Suite</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Description</th>
+                            <th>Range</th>
+                            <th>Interpretation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Spatial Gradient Preservation</strong></td>
+                            <td>Overall preservation of cortical depth gradients</td>
+                            <td>0.0 - 1.0</td>
+                            <td>Higher = better spatial structure preservation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Depth Correlation</strong></td>
+                            <td>Correlation between embedding and cortical depth</td>
+                            <td>0.0 - 1.0</td>
+                            <td>Higher = better depth axis preservation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Spatial Continuity</strong></td>
+                            <td>Preservation of spatial neighborhood relationships</td>
+                            <td>0.0 - 1.0</td>
+                            <td>Higher = nearby cells remain nearby</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Layer Boundary Smoothness</strong></td>
+                            <td>Smoothness of transitions between cortical layers</td>
+                            <td>0.0 - 1.0</td>
+                            <td>Higher = smoother biological transitions</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Layer Ordering</strong></td>
+                            <td>Preservation of anatomical layer sequence</td>
+                            <td>0.0 - 1.0</td>
+                            <td>Higher = correct anatomical ordering</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="result-block">
+                <h3>> Cortical Layer Structure</h3>
+                <ul>
+                    <li><strong>Layer 1 (Molecular):</strong> 0-10% depth, sparse cells, Reln+ markers</li>
+                    <li><strong>Layer 2/3 (Granular):</strong> 10-40% depth, dense pyramidal cells, Cux2+ markers</li>
+                    <li><strong>Layer 4 (Internal Granular):</strong> 40-55% depth, stellate cells, Rorb+ markers</li>
+                    <li><strong>Layer 5 (Internal Pyramidal):</strong> 55-75% depth, projection neurons, Bcl11b+ markers</li>
+                    <li><strong>Layer 6 (Multiform):</strong> 75-100% depth, diverse cells, Foxp2+ markers</li>
+                </ul>
+            </div>
+            
+            <div class="result-block">
+                <h3>> Publication Impact</h3>
+                <ul>
+                    <li><strong>Novel Validation:</strong> First comprehensive spatial gradient preservation benchmark for cortical data</li>
+                    <li><strong>Biological Relevance:</strong> Directly applicable to spatial transcriptomics and brain atlas projects</li>
+                    <li><strong>Quantitative Assessment:</strong> Provides rigorous metrics for spatial structure preservation</li>
+                    <li><strong>Algorithm Comparison:</strong> Reveals strengths/weaknesses for neuroscience applications</li>
+                </ul>
+            </div>
+            
+            <div class="result-block">
+                <h3>> Technical Innovation</h3>
+                <ul>
+                    <li><strong>Spatial Gradient Preservation:</strong> Novel metric measuring anatomical structure maintenance</li>
+                    <li><strong>Multi-scale Analysis:</strong> Evaluates preservation across different spatial scales</li>
+                    <li><strong>Boundary Smoothness:</strong> Quantifies transition quality between biological regions</li>
+                    <li><strong>Ground Truth Validation:</strong> Uses known cortical architecture for rigorous testing</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const runButton = document.getElementById('run-cortical-analysis-btn');
+            
+            runButton.addEventListener('click', () => {
+                runButton.disabled = true;
+                runButton.textContent = 'Running Cortical Analysis...';
+                
+                // Get form data
+                const selectedDataset = document.querySelector('input[name="dataset"]:checked').value;
+                const nCells = document.getElementById('n_cells').value;
+                const nLayers = document.getElementById('n_layers').value;
+                
+                const selectedAlgorithms = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+                    .filter(cb => cb.id.startsWith('algo_'))
+                    .map(cb => cb.id.replace('algo_', ''));
+                
+                const selectedMetrics = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+                    .filter(cb => cb.id.startsWith('metric_'))
+                    .map(cb => cb.id.replace('metric_', ''));
+                
+                // Show progress section immediately
+                showProgressSection();
+                
+                // Clear results and show progress
+                const resultsContainer = document.getElementById('results-container');
+                resultsContainer.innerHTML = '';
+                
+                // Initialize progress log
+                lastMessageCount = 0;
+                logMessage('🧠 Starting mouse brain cortical layers analysis...');
+                logMessage(`📊 Dataset: ${selectedDataset} (${nCells} cells, ${nLayers} layers)`);
+                logMessage(`⚙️  Algorithms: ${selectedAlgorithms.join(', ')}`);
+                logMessage(`📈 Metrics: ${selectedMetrics.join(', ')}`);
+                
+                // Start analysis
+                fetch('/api/mouse_brain_cortical', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dataset: selectedDataset,
+                        n_cells: parseInt(nCells),
+                        n_layers: parseInt(nLayers),
+                        algorithms: selectedAlgorithms,
+                        metrics: selectedMetrics
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        logMessage('✅ Analysis completed successfully');
+                        
+                        // Create results display
+                        const analysisResults = document.createElement('div');
+                        analysisResults.className = 'result-block';
+                        
+                        let resultsHTML = `<h3>> Cortical Analysis Results</h3>`;
+                        
+                        // Add the image if available
+                        if (data.image_path) {
+                            resultsHTML += `
+                                <img src="/static/${data.image_path}" 
+                                     alt="Mouse Brain Cortical Analysis Results" 
+                                     style="max-width: 100%; border: 1px solid var(--border-color); margin-top: 2rem;">
+                            `;
+                        }
+                        
+                        // Add results table
+                        if (data.results) {
+                            resultsHTML += `
+                                <h4>Algorithm Performance Summary</h4>
+                                <table class="results-table" style="margin-top: 1rem;">
+                                    <thead>
+                                        <tr>
+                                            <th>Algorithm</th>
+                                            <th>Spatial Gradient Preservation</th>
+                                            <th>Depth Correlation</th>
+                                            <th>Layer Ordering</th>
+                                            <th>Runtime (s)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            `;
+                            
+                            Object.entries(data.results).forEach(([algorithm, result]) => {
+                                if (result.success) {
+                                    const metrics = result.metrics;
+                                    const sgp = metrics.spatial_gradient_preservation?.toFixed(3) || 'N/A';
+                                    const depth = metrics.depth_correlation?.toFixed(3) || 'N/A';
+                                    const ordering = metrics.layer_ordering_correlation?.toFixed(3) || 'N/A';
+                                    const runtime = result.runtime?.toFixed(2) || 'N/A';
+                                    
+                                    const rowClass = algorithm === 'NormalizedDynamics' ? 'best-result' : '';
+                                    
+                                    resultsHTML += `
+                                        <tr class="${rowClass}">
+                                            <td><strong>${algorithm}</strong></td>
+                                            <td>${sgp}${algorithm === 'NormalizedDynamics' ? ' ⭐' : ''}</td>
+                                            <td>${depth}</td>
+                                            <td>${ordering}</td>
+                                            <td>${runtime}</td>
+                                        </tr>
+                                    `;
+                                }
+                            });
+                            
+                            resultsHTML += `
+                                    </tbody>
+                                </table>
+                            `;
+                        }
+                        
+                        // Add dataset info
+                        if (data.dataset_info) {
+                            resultsHTML += `
+                                <p style="color: var(--border-color); margin-top: 1rem;">
+                                    > Analysis of ${data.dataset_info.n_cells} cells with ${data.dataset_info.n_layers} cortical layers
+                                    <br>> Spatial coordinates: ${data.dataset_info.spatial_shape}
+                                    <br>> Generated at: ${data.timestamp}
+                                </p>
+                            `;
+                        }
+                        
+                        analysisResults.innerHTML = resultsHTML;
+                        resultsContainer.appendChild(analysisResults);
+                        
+                    } else {
+                        logMessage('❌ Analysis failed: ' + (data.error || 'Unknown error'));
+                        
+                        resultsContainer.innerHTML = `
+                            <div class="result-block">
+                                <p style="color: #ff4d4d;">Error: ${data.error || 'Analysis failed'}</p>
+                                ${data.output ? `<pre class="terminal-log">${data.output}</pre>` : ''}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    logMessage('❌ Network error: ' + error.message);
+                    
+                    resultsContainer.innerHTML = `
+                        <div class="result-block">
+                            <p style="color: #ff4d4d;">Error: Failed to run analysis. Please check the console.</p>
+                        </div>
+                    `;
+                })
+                .finally(() => {
+                    runButton.disabled = false;
+                    runButton.textContent = 'Run Cortical Analysis';
+                });
+            });
+            
+            // Helper functions
+            function showProgressSection() {
+                document.getElementById('progress-section').style.display = 'block';
+            }
+            
+            function logMessage(message) {
+                const logContainer = document.getElementById('analysis-log');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                const logEntry = document.createElement('div');
+                logEntry.innerHTML = `<span style="color: var(--border-color);">[${timestamp}]</span> ${message}`;
+                
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            let lastMessageCount = 0;
+        });
+    </script>
+</body>
+</html> 

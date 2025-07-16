@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Normalized Dynamics | GAIA Dataset Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>GAIA Dataset Analysis</h1>
+        <p>Astronomical Data Dimensionality Reduction</p>
+    </header>
+    
+    <!-- Navigation -->
+    <nav>
+        <a href="/">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis" class="active">📊 GAIA Analysis</a>
+        <a href="/streaming-demo">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
+        <a href="/smart-sampling">🧠 Smart Sampling</a>
+    </nav>
+    
+    <main>
+        <div class="controls">
+            <fieldset>
+                <legend>Select Dataset Size</legend>
+                <div>
+                    <input type="radio" id="size500" name="dataset_size" value="500" checked>
+                    <label for="size500">500 Samples (Fast)</label>
+                </div>
+                <div>
+                    <input type="radio" id="size2000" name="dataset_size" value="2000">
+                    <label for="size2000">2000 Samples (Moderate)</label>
+                </div>
+                <div>
+                    <input type="radio" id="size5000" name="dataset_size" value="5000">
+                    <label for="size5000">5000 Samples (Balanced)</label>
+                </div>
+                <div>
+                    <input type="radio" id="size10000" name="dataset_size" value="10000">
+                    <label for="size10000">10000 Samples (Slow & Accurate)</label>
+                </div>
+            </fieldset>
+            <button id="run-analysis-btn">Run GAIA Analysis</button>
+        </div>
+        <div id="results-container">
+            <!-- Results will be displayed here -->
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

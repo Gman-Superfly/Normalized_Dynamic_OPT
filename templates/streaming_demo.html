@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Demo | Normalized Dynamics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-streaming {
+            background-color: #27ae60;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-stopped {
+            background-color: #e74c3c;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: rgba(255, 153, 0, 0.1);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .sensor-readings {
+            margin-top: 20px;
+        }
+        
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .sensor-name {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+        
+        .sensor-value {
+            color: #27ae60;
+            font-family: 'Roboto Mono', monospace;
+        }
+        
+        .anomaly-btn {
+            background: transparent;
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            border-radius: 4px;
+        }
+        
+        .anomaly-btn:hover {
+            background: var(--text-color);
+            color: var(--bg-color);
+        }
+        
+        .demo-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .plot-section, .metrics-section {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        #live-plot {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Real-Time Streaming Demo</h1>
+        <p>Live IoT Sensor Data Analysis with Dynamic Anomaly Detection</p>
+    </header>
+    
+    <!-- Navigation -->
+    <nav>
+        <a href="/">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis">📊 GAIA Analysis</a>
+        <a href="/streaming-demo" class="active">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
+        <a href="/smart-sampling">🧠 Smart Sampling</a>
+    </nav>
+    
+    <main>
+        <div class="result-block">
+            <h3>> Real-Time Sensor Data Embedding</h3>
+            <p>Watch NormalizedDynamics algorithm process streaming IoT sensor data in real-time. The system simulates 6 realistic sensors (temperature, humidity, pressure, CO₂, light, vibration) with temporal correlations and allows real-time anomaly injection.</p>
+        </div>
+        
+        <!-- Main Demo Layout -->
+        <div class="demo-layout">
+            <!-- Live Embedding Plot -->
+            <div class="plot-section">
+                <h3>Live 2D Embedding</h3>
+                <div id="live-plot"></div>
+            </div>
+            
+            <!-- Metrics and Sensor Data -->
+            <div class="metrics-section">
+                <h3>Performance Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="update-time">0 ms</div>
+                        <div class="metric-label">Update Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="points-count">0</div>
+                        <div class="metric-label">Points Processed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="throughput">0</div>
+                        <div class="metric-label">Points/Second</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="status">Stopped</div>
+                        <div class="metric-label">Status</div>
+                    </div>
+                </div>
+                
+                <h4>Current Sensor Readings</h4>
+                <div class="sensor-readings" id="sensor-readings">
+                    <!-- Sensor data will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls" style="text-align: center;">
+            <h3>Stream Controls</h3>
+            <button id="start-stream">Start Stream</button>
+            <button id="stop-stream" disabled>Stop Stream</button>
+            <button id="reset">Reset</button>
+            
+            <div style="margin-top: 30px;">
+                <h3>🚨 Anomaly Injection</h3>
+                <p style="font-size: 14px; color: var(--border-color); margin-bottom: 15px;">
+                    Simulate real-world events and see how the embedding responds in real-time
+                </p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                    <button class="anomaly-btn" data-anomaly="spike">📈 Sensor Spike</button>
+                    <button class="anomaly-btn" data-anomaly="drift">📉 Gradual Drift</button>
+                    <button class="anomaly-btn" data-anomaly="failure">❌ Sensor Failure</button>
+                    <button class="anomaly-btn" data-anomaly="fire_alarm">🔥 Fire Alarm</button>
+                    <button class="anomaly-btn" data-anomaly="equipment_failure">⚙️ Equipment Failure</button>
+                    <button class="anomaly-btn" data-anomaly="network_interference">📡 Network Issues</button>
+                </div>
+                
+                <button id="clear-anomalies" style="width: 100%;">Clear All Anomalies</button>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <div id="anomaly-log" class="terminal-log" style="max-height: 150px; overflow-y: auto;">
+                    <div style="color: var(--border-color);">Anomaly injection log will appear here...</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <p><strong>Algorithm:</strong> NormalizedDynamics with real-time incremental updates</p>
+                <p><strong>Data:</strong> 6 simulated IoT sensors (temperature, humidity, pressure, CO₂, light, vibration)</p>
+                <p><strong>Update Rate:</strong> ~10 points per second</p>
+            </div>
+        </div>
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        class StreamingDemo {
+            constructor() {
+                this.eventSource = null;
+                this.isStreaming = false;
+                this.pointsProcessed = 0;
+                this.startTime = null;
+                this.plotData = {
+                    x: [],
+                    y: [],
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: {
+                        size: 8,
+                        color: [],
+                        colorscale: [[0, '#ff9900'], [1, '#ffcc00']],
+                        showscale: true,
+                        colorbar: {
+                            title: 'Time',
+                            titlefont: { color: '#ff9900' },
+                            tickfont: { color: '#ff9900' }
+                        },
+                        line: {
+                            color: 'rgba(255, 153, 0, 0.3)',
+                            width: 2
+                        }
+                    },
+                    name: 'Sensor Data'
+                };
+                
+                this.setupEventListeners();
+                this.initializePlot();
+            }
+            
+            setupEventListeners() {
+                document.getElementById('start-stream').onclick = () => this.startStreaming();
+                document.getElementById('stop-stream').onclick = () => this.stopStreaming();
+                document.getElementById('reset').onclick = () => this.reset();
+                
+                // Anomaly injection buttons
+                document.querySelectorAll('.anomaly-btn').forEach(btn => {
+                    btn.onclick = () => this.injectAnomaly(btn.dataset.anomaly);
+                });
+                
+                document.getElementById('clear-anomalies').onclick = () => this.clearAnomalies();
+            }
+            
+            initializePlot() {
+                const layout = {
+                    title: {
+                        text: 'Real-Time 2D Embedding of Sensor Data',
+                        font: { color: '#ff9900' }
+                    },
+                    xaxis: { 
+                        title: 'Dimension 1',
+                        color: '#ff9900',
+                        gridcolor: '#333',
+                        zerolinecolor: '#666'
+                    },
+                    yaxis: { 
+                        title: 'Dimension 2',
+                        color: '#ff9900',
+                        gridcolor: '#333',
+                        zerolinecolor: '#666'
+                    },
+                    showlegend: false,
+                    margin: { l: 50, r: 50, t: 50, b: 50 },
+                    paper_bgcolor: '#1a1a1a',
+                    plot_bgcolor: '#0c0c0c',
+                    font: { color: '#ff9900' }
+                };
+                
+                Plotly.newPlot('live-plot', [this.plotData], layout, {responsive: true});
+            }
+            
+            startStreaming() {
+                if (this.isStreaming) return;
+                
+                this.eventSource = new EventSource('/api/streaming-data');
+                this.startTime = Date.now();
+                
+                this.eventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.error) {
+                            console.error('Streaming error:', data.error);
+                            this.stopStreaming();
+                            return;
+                        }
+                        
+                        this.updatePlot(data);
+                        this.updateMetrics(data);
+                        this.updateSensorReadings(data.sensor_reading);
+                        
+                    } catch (error) {
+                        console.error('Error parsing streaming data:', error);
+                    }
+                };
+                
+                this.eventSource.onerror = (error) => {
+                    console.error('EventSource error:', error);
+                    this.stopStreaming();
+                };
+                
+                this.isStreaming = true;
+                this.updateButtons();
+                this.updateStatus('Streaming');
+            }
+            
+            stopStreaming() {
+                if (this.eventSource) {
+                    this.eventSource.close();
+                    this.eventSource = null;
+                }
+                
+                this.isStreaming = false;
+                this.updateButtons();
+                this.updateStatus('Stopped');
+            }
+            
+            reset() {
+                this.stopStreaming();
+                
+                // Reset plot data
+                this.plotData.x = [];
+                this.plotData.y = [];
+                this.plotData.marker.color = [];
+                Plotly.redraw('live-plot');
+                
+                // Reset metrics
+                this.pointsProcessed = 0;
+                document.getElementById('update-time').textContent = '0 ms';
+                document.getElementById('points-count').textContent = '0';
+                document.getElementById('throughput').textContent = '0';
+                
+                // Clear sensor readings
+                document.getElementById('sensor-readings').innerHTML = '';
+                
+                // Call backend reset
+                fetch('/api/streaming-control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reset' })
+                });
+            }
+            
+            updatePlot(data) {
+                this.updatePlotWithAnomalies(data);
+            }
+            
+            updateMetrics(data) {
+                this.pointsProcessed = data.point_count;
+                
+                document.getElementById('update-time').textContent = `${data.update_time} ms`;
+                document.getElementById('points-count').textContent = this.pointsProcessed;
+                
+                // Calculate throughput
+                if (this.startTime) {
+                    const elapsed = (Date.now() - this.startTime) / 1000;
+                    const throughput = Math.round(this.pointsProcessed / elapsed * 10) / 10;
+                    document.getElementById('throughput').textContent = throughput;
+                }
+            }
+            
+            updateSensorReadings(reading) {
+                const container = document.getElementById('sensor-readings');
+                const sensors = ['temperature', 'humidity', 'pressure', 'co2', 'light', 'vibration'];
+                
+                let html = '';
+                sensors.forEach(sensor => {
+                    if (reading[sensor] !== undefined) {
+                        html += `
+                            <div class="sensor-row">
+                                <span class="sensor-name">${sensor.charAt(0).toUpperCase() + sensor.slice(1)}:</span>
+                                <span class="sensor-value">${reading[sensor]}</span>
+                            </div>
+                        `;
+                    }
+                });
+                
+                container.innerHTML = html;
+            }
+            
+            updateButtons() {
+                const startBtn = document.getElementById('start-stream');
+                const stopBtn = document.getElementById('stop-stream');
+                
+                startBtn.disabled = this.isStreaming;
+                stopBtn.disabled = !this.isStreaming;
+            }
+            
+            updateStatus(status) {
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = status;
+                
+                // Update visual indicator
+                const indicators = document.querySelectorAll('.status-indicator');
+                indicators.forEach(indicator => {
+                    indicator.className = 'status-indicator ' + 
+                        (status === 'Streaming' ? 'status-streaming' : 'status-stopped');
+                });
+            }
+            
+            injectAnomaly(anomalyType) {
+                if (!this.isStreaming) {
+                    alert('Please start streaming first!');
+                    return;
+                }
+                
+                const anomalyData = {
+                    type: anomalyType,
+                    sensor: null,  // Auto-select based on anomaly type
+                    duration: 50,  // 5 seconds at 10 fps
+                    intensity: 1.5
+                };
+                
+                fetch('/api/inject-anomaly', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(anomalyData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.logAnomaly(anomalyType, 'injected');
+                        this.highlightAnomalyButton(anomalyType);
+                    } else {
+                        console.error('Failed to inject anomaly:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error injecting anomaly:', error);
+                });
+            }
+            
+            clearAnomalies() {
+                fetch('/api/streaming-control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'clear_anomalies' })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    this.logAnomaly('all', 'cleared');
+                    this.clearAnomalyHighlights();
+                });
+            }
+            
+            logAnomaly(anomalyType, action) {
+                const logContainer = document.getElementById('anomaly-log');
+                const timestamp = new Date().toLocaleTimeString();
+                const message = `[${timestamp}] ${action.toUpperCase()}: ${anomalyType.replace('_', ' ')}`;
+                
+                const logEntry = document.createElement('div');
+                logEntry.textContent = message;
+                logEntry.style.color = action === 'injected' ? '#e74c3c' : '#27ae60';
+                
+                // Clear placeholder text on first log
+                if (logContainer.children.length === 1 && logContainer.children[0].style.color === 'var(--border-color)') {
+                    logContainer.innerHTML = '';
+                }
+                
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+            
+            highlightAnomalyButton(anomalyType) {
+                const button = document.querySelector(`[data-anomaly="${anomalyType}"]`);
+                if (button) {
+                    button.style.background = '#e74c3c';
+                    button.style.color = 'white';
+                    button.style.animation = 'pulse 1s infinite';
+                    
+                    // Remove highlight after 5 seconds
+                    setTimeout(() => {
+                        button.style.background = 'transparent';
+                        button.style.color = 'var(--text-color)';
+                        button.style.animation = '';
+                    }, 5000);
+                }
+            }
+            
+            clearAnomalyHighlights() {
+                document.querySelectorAll('.anomaly-btn').forEach(btn => {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-color)';
+                    btn.style.animation = '';
+                });
+            }
+            
+            updatePlotWithAnomalies(data) {
+                if (data.all_embeddings && data.all_embeddings.length > 0) {
+                    this.plotData.x = data.all_embeddings.map(point => point[0]);
+                    this.plotData.y = data.all_embeddings.map(point => point[1]);
+                    
+                    // Track which points are anomalous
+                    const isCurrentAnomaly = data.has_anomaly;
+                    const currentIndex = data.all_embeddings.length - 1;
+                    
+                    // Color points based on anomaly status
+                    const colors = [];
+                    const sizes = [];
+                    const borderColors = [];
+                    
+                    for (let i = 0; i < data.all_embeddings.length; i++) {
+                        const isAnomalousPoint = (i === currentIndex && isCurrentAnomaly);
+                        
+                        if (isAnomalousPoint) {
+                            colors.push('cyan'); // Cyan color for anomalies
+                            sizes.push(12);   // Larger size for anomalies
+                            borderColors.push('cyan');  // Cyan border
+                        } else {
+                            colors.push(i);   // Normal temporal coloring
+                            sizes.push(8);    // Normal size
+                            borderColors.push('rgba(255, 153, 0, 0.3)');  // Subtle border
+                        }
+                    }
+                    
+                    // Update marker properties
+                    this.plotData.marker.color = colors;
+                    this.plotData.marker.size = sizes;
+                    this.plotData.marker.line = {
+                        color: borderColors,
+                        width: 2
+                    };
+                    
+                    Plotly.redraw('live-plot');
+                }
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new StreamingDemo();
+        });
+    </script>
+</body>
+</html> 

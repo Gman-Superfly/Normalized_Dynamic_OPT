@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Sampling Analysis | Normalized Dynamics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Smart Sampling Analysis</h1>
+        <p>Intelligent Data Sampling & Analysis Framework</p>
+    </header>
+    
+    <!-- Navigation -->
+    <nav>
+        <a href="/">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis">📊 GAIA Analysis</a>
+        <a href="/streaming-demo">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
+        <a href="/smart-sampling" class="active">🧠 Smart Sampling</a>
+    </nav>
+
+    <main>
+        <div class="result-block">
+            <h3>> Smart Sampling Framework</h3>
+            <p>This framework demonstrates intelligent data sampling techniques for efficient analysis of large datasets while preserving key structural properties.</p>
+        </div>
+
+        <!-- Quick Test Section -->
+        <div class="controls">
+            <fieldset>
+                <legend>🚀 Quick Test (Terminal Output)</legend>
+                                    <p>This runs the exact same test you see in the terminal: <code>python src/test_smart_sampling_quick.py</code></p>
+                <button id="run-quick-test-btn">Run Quick Test</button>
+            </fieldset>
+        </div>
+
+        <!-- Terminal Output Display -->
+        <div id="terminal-output" style="display: none;">
+            <div class="result-block">
+                <h3>> Terminal Output</h3>
+                <pre id="terminal-content" class="terminal-log" style="max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+
+        <!-- Full Analysis Section -->
+        <div class="controls">
+            <fieldset>
+                <legend>📊 Full Smart Sampling Analysis</legend>
+                <p>Complete analysis with visualizations (may take longer).</p>
+                <button id="run-full-analysis-btn">Run Full Analysis</button>
+            </fieldset>
+        </div>
+
+        <div id="results-container">
+            <!-- Analysis results will be displayed here -->
+        </div>
+
+        <!-- Loading indicators -->
+        <div id="loading-indicator" style="display: none;">
+            <div class="result-block">
+                <h3>> Analysis in Progress...</h3>
+                <div class="loading-spinner"></div>
+                <p>Running smart sampling analysis, please wait...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let lastMessageCount = 0;
+        
+        function logMessage(message) {
+            const terminalContent = document.getElementById('terminal-content');
+            terminalContent.textContent += message + '\n';
+            terminalContent.scrollTop = terminalContent.scrollHeight;
+        }
+        
+        function updateProgressLog(messages) {
+            if (messages && messages.length > lastMessageCount) {
+                const newMessages = messages.slice(lastMessageCount);
+                newMessages.forEach(message => {
+                    logMessage(message);
+                });
+                lastMessageCount = messages.length;
+            }
+        }
+        
+        // Quick test functionality with progress polling (like synthetic developmental)
+        document.getElementById('run-quick-test-btn').addEventListener('click', function() {
+            const btn = this;
+            const terminalOutput = document.getElementById('terminal-output');
+            const terminalContent = document.getElementById('terminal-content');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running Quick Test...';
+            terminalOutput.style.display = 'block';
+            terminalContent.textContent = '';
+            lastMessageCount = 0;
+            
+            logMessage('[ROCKET] Starting smart sampling quick test...');
+                            logMessage('This runs the same analysis as: python src/test_smart_sampling_quick.py');
+            
+            // Start polling for progress updates
+            const progressInterval = setInterval(() => {
+                fetch('/api/smart_sampling/progress')
+                    .then(response => response.json())
+                    .then(progressData => {
+                        if (progressData.status === 'running') {
+                            // Update log with new messages
+                            updateProgressLog(progressData.messages);
+                        } else if (progressData.status === 'completed' || progressData.status === 'error') {
+                            clearInterval(progressInterval);
+                            if (progressData.status === 'completed') {
+                                logMessage('[CHECK] Analysis completed successfully');
+                            } else {
+                                logMessage('[ERROR] Analysis failed: ' + progressData.current_message);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Progress polling error:', error);
+                    });
+            }, 1000); // Poll every second
+            
+            // Call the actual API
+            fetch('/api/smart_sampling/quick_test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Stop polling since the API call finished
+                clearInterval(progressInterval);
+                
+                if (data.status === 'success') {
+                    logMessage('[PARTY] Quick test completed successfully!');
+                } else {
+                    logMessage(`[ERROR] Error: ${data.error}`);
+                    if (data.output) {
+                        logMessage('\nDetails:');
+                        logMessage(data.output);
+                    }
+                }
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                logMessage(`[ERROR] Network Error: ${error.message}`);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Run Quick Test';
+            });
+        });
+
+        // Full analysis functionality (keeping existing)
+        document.getElementById('run-full-analysis-btn').addEventListener('click', function() {
+            const btn = this;
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const resultsContainer = document.getElementById('results-container');
+            
+            btn.disabled = true;
+            btn.textContent = 'Running Analysis...';
+            loadingIndicator.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            
+            fetch('/api/smart_sampling/latest', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.style.display = 'none';
+                
+                if (data.status === 'success') {
+                    displayResults(data);
+                } else {
+                    resultsContainer.innerHTML = `<div class="result-block error"><h3>Error</h3><p>${data.error}</p></div>`;
+                }
+            })
+            .catch(error => {
+                loadingIndicator.style.display = 'none';
+                resultsContainer.innerHTML = `<div class="result-block error"><h3>Network Error</h3><p>${error.message}</p></div>`;
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Run Full Analysis';
+            });
+        });
+
+        function displayResults(data) {
+            const resultsContainer = document.getElementById('results-container');
+            let html = '<div class="result-block"><h3>> Latest Smart Sampling Results</h3>';
+            
+            if (data.visualizations) {
+                if (data.visualizations.analysis_chart) {
+                    html += `<div class="visualization">
+                        <h4>Analysis Chart</h4>
+                        <img src="/static/${data.visualizations.analysis_chart}?t=${Date.now()}" alt="Smart Sampling Analysis" style="max-width: 100%; height: auto;">
+                    </div>`;
+                }
+                
+                if (data.visualizations.performance_chart) {
+                    html += `<div class="visualization">
+                        <h4>Performance Chart</h4>
+                        <img src="/static/${data.visualizations.performance_chart}?t=${Date.now()}" alt="Smart Sampling Performance" style="max-width: 100%; height: auto;">
+                    </div>`;
+                }
+            }
+            
+            html += `<p><em>Loaded at: ${data.timestamp}</em></p>`;
+            html += '</div>';
+            
+            resultsContainer.innerHTML = html;
+        }
+    </script>
+</body>
+</html> 

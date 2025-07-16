@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biological Metrics Suite | Normalized Dynamics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Biological Metrics Suite</h1>
+        <p>Comprehensive Biological Validation Framework</p>
+    </header>
+    
+    <!-- Terminal-style Navigation -->
+    <nav>
+        <a href="/">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis">📊 GAIA Analysis</a>
+        <a href="/streaming-demo">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics" class="active">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
+        <a href="/smart-sampling">🧠 Smart Sampling</a>
+    </nav>
+
+    <main>
+        <div class="result-block">
+            <h3>> Biological Validation Framework</h3>
+            <p>This comprehensive metrics suite evaluates dimensionality reduction algorithms specifically for biological data analysis. Unlike general-purpose metrics, these are designed to capture biological significance and preserve scientific interpretability.</p>
+        </div>
+
+        <div class="controls">
+            <fieldset>
+                <legend>Dataset Selection</legend>
+                <div>
+                    <input type="radio" id="dataset_pancreas" name="dataset" value="pancreas" checked>
+                    <label for="dataset_pancreas">Pancreas Endocrinogenesis (12K cells, developmental trajectory)</label>
+                </div>
+                <div>
+                    <input type="radio" id="dataset_synthetic" name="dataset" value="synthetic">
+                    <label for="dataset_synthetic">Synthetic Developmental (10K cells, known ground truth)</label>
+            </div>
+                <div>
+                    <input type="radio" id="dataset_bodenmiller" name="dataset" value="bodenmiller" disabled>
+                    <label for="dataset_bodenmiller" style="color: #666;">Bodenmiller CyTOF (8K cells, immune system) - <em>Coming Soon</em></label>
+        </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>⚡ Computation Mode</legend>
+                <div>
+                    <input type="radio" id="mode_demo" name="computation_mode" value="demo" checked>
+                    <label for="mode_demo">🚀 <strong>Fast Demo Mode</strong> (5-10 seconds, enhanced simple pseudotime)</label>
+                    <div style="margin-left: 20px; font-size: 0.9em; color: #888;">
+                        Optimized for quick demos and interactive exploration
+                    </div>
+                </div>
+                <div>
+                    <input type="radio" id="mode_full" name="computation_mode" value="full">
+                    <label for="mode_full">🔬 <strong>Full Scientific Mode</strong> (30-60 seconds, rigorous DPT calculation)</label>
+                    <div style="margin-left: 20px; font-size: 0.9em; color: #888;">
+                        Uses scanpy DPT for publication-quality pseudotime analysis
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Algorithms to Compare</legend>
+                <div>
+                    <input type="checkbox" id="algo_normdyn" checked>
+                    <label for="algo_normdyn">NormalizedDynamics (Trajectory preservation)</label>
+                    </div>
+                <div>
+                    <input type="checkbox" id="algo_tsne" checked>
+                    <label for="algo_tsne">t-SNE (Cluster visualization)</label>
+                            </div>
+                <div>
+                    <input type="checkbox" id="algo_umap" checked>
+                    <label for="algo_umap">UMAP (General embedding)</label>
+                            </div>
+                <div>
+                    <input type="checkbox" id="algo_pca" checked>
+                    <label for="algo_pca">PCA (Linear baseline)</label>
+                        </div>
+                <div>
+                    <input type="checkbox" id="algo_diffmap" checked>
+                    <label for="algo_diffmap">Diffusion Maps (Manifold learning)</label>
+                </div>
+            </fieldset>
+            
+            <fieldset>
+                <legend>Biological Metrics</legend>
+                <div>
+                    <input type="checkbox" id="metric_trajectory" checked>
+                    <label for="metric_trajectory">Trajectory Smoothness (developmental continuity)</label>
+            </div>
+                <div>
+                    <input type="checkbox" id="metric_celltype" checked>
+                    <label for="metric_celltype">Cell Type Preservation (clustering quality)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_spatial" checked>
+                    <label for="metric_spatial">Spatial Coherence (tissue architecture)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_temporal" checked>
+                    <label for="metric_temporal">Temporal Ordering (pseudotime accuracy)</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="metric_conservation" checked>
+                    <label for="metric_conservation">Conservation Score (biological relationship preservation)</label>
+                </div>
+            </fieldset>
+            
+            <button id="run-biological-metrics-btn">Run Comprehensive Biological Analysis</button>
+        </div>
+
+        <div id="results-container">
+            <div class="result-block">
+                <h3>> Biological Metrics Overview</h3>
+                <ul>
+                    <li><strong>Trajectory Smoothness:</strong> Measures preservation of continuous developmental processes (lower = better)</li>
+                    <li><strong>Cell Type Preservation:</strong> Evaluates how well distinct cell populations are maintained</li>
+                    <li><strong>Spatial Coherence:</strong> Assesses preservation of tissue architecture and spatial relationships</li>
+                    <li><strong>Temporal Ordering:</strong> Validates correct developmental stage progression</li>
+                    <li><strong>Conservation Score:</strong> Overall preservation of biological relationships</li>
+                </ul>
+        </div>
+
+            <div class="result-block" id="performance-summary-block" style="display: none;">
+                <h3>> Algorithm Performance Summary</h3>
+                <table class="results-table" id="metrics-summary-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Trajectory Smoothness<br><small>(lower is better)</small></th>
+                            <th>Cell Type Preservation<br><small>(higher is better)</small></th>
+                            <th>Spatial Coherence<br><small>(higher is better)</small></th>
+                            <th>Temporal Ordering<br><small>(higher is better)</small></th>
+                            <th>Overall Score<br><small>(higher is better)</small></th>
+                        </tr>
+                    </thead>
+                    <tbody id="metrics-summary-tbody">
+                        <!-- Results will be populated after analysis -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="result-block" id="results-placeholder">
+                <h3>> Analysis Results</h3>
+                <p style="color: var(--border-color); text-align: center; padding: 2rem;">
+                    📊 Select your dataset and algorithms above, then click "Run Comprehensive Biological Analysis" to see results here.
+                </p>
+                <div style="color: var(--border-color); text-align: center; margin-top: 1rem;">
+                    <small>Results will include:</small>
+                    <ul style="list-style: none; margin-top: 0.5rem;">
+                        <li>• Algorithm performance comparison</li>
+                        <li>• Biological accuracy metrics</li>
+                        <li>• Trajectory preservation scores</li>
+                        <li>• Publication-quality visualizations</li>
+                    </ul>
+                </div>
+            </div>
+                        
+
+        </div>
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const runButton = document.getElementById('run-biological-metrics-btn');
+            const resultsContainer = document.getElementById('results-container');
+            
+            runButton.addEventListener('click', () => {
+                // Get selected dataset
+                const selectedDataset = document.querySelector('input[name="dataset"]:checked').value;
+                
+                // Get selected computation mode
+                const selectedMode = document.querySelector('input[name="computation_mode"]:checked').value;
+                
+                // Get selected algorithms
+                const selectedAlgorithms = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+                    .filter(cb => cb.id.startsWith('algo_'))
+                    .map(cb => cb.id.replace('algo_', ''));
+                
+                // Get selected metrics
+                const selectedMetrics = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+                    .filter(cb => cb.id.startsWith('metric_'))
+                    .map(cb => cb.id.replace('metric_', ''));
+                
+                runButton.disabled = true;
+                runButton.textContent = 'Running Biological Analysis...';
+                
+                // Estimate processing time based on mode
+                const estimatedTime = selectedMode === 'demo' ? '5-10 seconds' : '30-60 seconds';
+                const modeDescription = selectedMode === 'demo' ? '🚀 Fast Demo Mode' : '🔬 Full Scientific Mode';
+                
+                // Show loading message
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'result-block';
+                loadingDiv.id = 'loading-analysis';
+                loadingDiv.innerHTML = `
+                    <h3>> Running Analysis</h3>
+                    <div class="terminal-log">
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Starting comprehensive biological validation...</div>
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Dataset: ${selectedDataset}</div>
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Mode: ${modeDescription}</div>
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Algorithms: ${selectedAlgorithms.join(', ')}</div>
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Metrics: ${selectedMetrics.join(', ')}</div>
+                        <div style="color: var(--border-color);">[${new Date().toLocaleTimeString()}] Estimated time: ${estimatedTime}</div>
+                    </div>
+                `;
+                resultsContainer.appendChild(loadingDiv);
+                
+                // Make API call to backend
+                fetch('/api/biological_metrics', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dataset: selectedDataset,
+                        algorithms: selectedAlgorithms,
+                        metrics: selectedMetrics,
+                        demo_mode: selectedMode === 'demo'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove loading message
+                    const loadingElement = document.getElementById('loading-analysis');
+                    if (loadingElement) {
+                        loadingElement.remove();
+                    }
+                    
+                    if (data.status === 'success') {
+                        displayBiologicalResults(data, selectedDataset);
+                    } else {
+                        displayBiologicalError(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Remove loading message
+                    const loadingElement = document.getElementById('loading-analysis');
+                    if (loadingElement) {
+                        loadingElement.remove();
+                    }
+                    displayBiologicalError({ error: 'Network error: ' + error.message });
+                })
+                .finally(() => {
+                    runButton.disabled = false;
+                    runButton.textContent = 'Run Comprehensive Biological Analysis';
+                });
+            });
+            
+            function displayBiologicalResults(data, selectedDataset) {
+                // Hide placeholder and show results table
+                document.getElementById('results-placeholder').style.display = 'none';
+                document.getElementById('performance-summary-block').style.display = 'block';
+                
+                let datasetDescription = '';
+                switch(selectedDataset) {
+                    case 'pancreas':
+                        datasetDescription = 'Pancreas Endocrinogenesis (12K cells, developmental trajectory)';
+                        break;
+                    case 'synthetic':
+                        datasetDescription = 'Synthetic Developmental (10K cells, known ground truth)';
+                        break;
+                    case 'bodenmiller':
+                        datasetDescription = 'Bodenmiller CyTOF (8K cells, immune system)';
+                        break;
+                    default:
+                        datasetDescription = selectedDataset;
+                }
+                
+                // Populate the main results table with biological metrics
+                const tableBody = document.getElementById('metrics-summary-tbody');
+                tableBody.innerHTML = ''; // Clear existing content
+                
+                if (data.results && Object.keys(data.results).length > 0) {
+                    Object.entries(data.results).forEach(([algorithm, result]) => {
+                        const row = document.createElement('tr');
+                        if (algorithm === 'NormalizedDynamics') {
+                            row.className = 'best-result';
+                        }
+                        
+                        let metrics = result.biological_metrics || {};
+                        let trajSmooth = metrics.fragmentation?.fragmentation_penalty || 'N/A';
+                        let cellType = metrics.bifurcation_preservation?.bps_global || 'N/A';
+                        let spatial = metrics.trajectory_coherence?.multi_scale_coherence || 'N/A';
+                        let temporal = metrics.trajectory_coherence?.spearman_correlation || 'N/A';
+                        let overall = 'N/A';
+                        
+                        // Calculate overall score if metrics are available (matching terminal calculation)
+                        if (typeof trajSmooth === 'number' && typeof cellType === 'number') {
+                            let tcs_global = metrics.trajectory_coherence?.tcs_global || 0;
+                            overall = (
+                                0.3 * tcs_global +
+                                0.3 * cellType +
+                                0.2 * (1 - trajSmooth) +  // Convert fragmentation to higher-is-better
+                                0.2 * (typeof temporal === 'number' ? temporal : 0)
+                            ).toFixed(3);
+                        }
+                        
+                        // Format numbers
+                        if (typeof trajSmooth === 'number') trajSmooth = trajSmooth.toFixed(3);
+                        if (typeof cellType === 'number') cellType = cellType.toFixed(3);
+                        if (typeof spatial === 'number') spatial = spatial.toFixed(3);
+                        if (typeof temporal === 'number') temporal = temporal.toFixed(3);
+                        
+                        row.innerHTML = `
+                            <td><strong>${algorithm}</strong></td>
+                            <td>${trajSmooth}${algorithm === 'NormalizedDynamics' && typeof trajSmooth === 'string' && trajSmooth !== 'N/A' ? ' ⭐' : ''}</td>
+                            <td>${cellType}</td>
+                            <td>${spatial}</td>
+                            <td>${temporal}</td>
+                            <td>${overall}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                // Add detailed results section
+                const detailedResults = document.createElement('div');
+                detailedResults.className = 'result-block';
+                
+                let resultsHtml = `
+                    <h3>> Analysis Results - ${datasetDescription}</h3>
+                    <div class="terminal-log">
+                        <div style="color: var(--border-color);">[${data.timestamp}] Analysis completed for ${selectedDataset} dataset</div>
+                `;
+                
+                // Add algorithm results
+                Object.entries(data.results).forEach(([algorithm, result]) => {
+                    const runtime = result.runtime ? result.runtime.toFixed(3) : 'N/A';
+                    resultsHtml += `<div style="color: var(--border-color);">[${data.timestamp}] ${algorithm}: ${runtime}s runtime</div>`;
+                });
+                
+                resultsHtml += `
+                        <div style="color: #27ae60;">[${data.timestamp}] ✅ Analysis complete!</div>
+                    </div>
+                `;
+                
+                // Add visualization image if available
+                if (data.image_path) {
+                    resultsHtml += `
+                        <h4>Publication-Quality Visualization</h4>
+                        <img src="/static/${data.image_path}" 
+                             alt="Biological Metrics Analysis Results" 
+                             style="max-width: 100%; border: 1px solid var(--border-color); margin-top: 1rem;">
+                        <p style="color: var(--border-color); margin-top: 0.5rem; font-size: 0.9em;">
+                            > Comprehensive biological validation showing algorithm performance across trajectory-focused metrics
+                        </p>
+                    `;
+                }
+                
+                // Add output log if available
+                if (data.output) {
+                    resultsHtml += `
+                        <h4>Detailed Analysis Log</h4>
+                        <pre class="terminal-log" style="max-height: 300px; overflow-y: auto;">${data.output}</pre>
+                    `;
+                }
+                
+                detailedResults.innerHTML = resultsHtml;
+                document.getElementById('results-container').appendChild(detailedResults);
+            }
+            
+            function displayBiologicalError(data) {
+                const errorResults = document.createElement('div');
+                errorResults.className = 'result-block';
+                errorResults.innerHTML = `
+                    <h3>> Analysis Error</h3>
+                    <div style="color: #ff4d4d;">
+                        <p><strong>Error:</strong> ${data.error}</p>
+                    </div>
+                    ${data.traceback ? `<pre class="terminal-log" style="max-height: 200px; overflow-y: auto;">${data.traceback}</pre>` : ''}
+                `;
+                document.getElementById('results-container').appendChild(errorResults);
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Normalized Dynamics | Wine Dataset Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Wine Dataset Analysis</h1>
+        <p>Real-World Classification Dataset Evaluation</p>
+    </header>
+    
+    <!-- Navigation -->
+    <nav>
+        <a href="/" class="active">🍷 Wine Analysis</a>
+        <a href="/gaia-analysis">📊 GAIA Analysis</a>
+        <a href="/streaming-demo">🚀 Streaming Demo</a>
+        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
+        <a href="/biological-metrics">📈 Biological Metrics</a>
+        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
+        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
+        <a href="/smart-sampling">🧠 Smart Sampling</a>
+    </nav>
+    
+    <main>
+        <div class="controls">
+             <fieldset>
+                <legend>Wine Dataset Analysis</legend>
+                <p>This will run the analysis on the Wine dataset (178 samples, 13 features → 2D embedding).</p>
+                <p>The Wine dataset is a classic machine learning dataset containing chemical analysis of wines from three different cultivars in Italy.</p>
+            </fieldset>
+            <button id="run-wine-btn">Run Wine Dataset Analysis</button>
+        </div>
+        <div id="results-container">
+            <!-- Results will be displayed here -->
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 
