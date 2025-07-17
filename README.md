@@ -195,6 +195,7 @@ Our extensive test suite validates performance across multiple domains:
 ```
 tests/
 ├── test_normalized_dynamics.py          # Core algorithm validation
+├── test_convergence.py                  # Multi-criteria convergence validation
 ├── test_biological_metrics.py          # Standard biological evaluation
 ├── test_enhanced_biological_metrics.py # Advanced DPT-based metrics
 ├── test_pancreas_endocrinogenesis.py   # Single-cell developmental data
