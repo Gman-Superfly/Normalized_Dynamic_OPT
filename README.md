@@ -104,7 +104,7 @@ Where:
 - `Δt`: Dimension-dependent time step
 - `η`: Optional exploration noise
 
-### Mathematical Foundation
+### Math Details
 
 **Problem Formulation**: Given high-dimensional data X ∈ ℝ^(n×d), find embedding H ∈ ℝ^(n×k) where k < d that preserves:
 - Geometric relationships: ||x_i - x_j|| ≈ ||h_i - h_j||
@@ -139,7 +139,7 @@ where ||h_i - h_j||² is the squared Euclidean distance between points h_i and h
 ```
 In sparse regions (fewer points), larger kernels smooth over broader areas; in dense regions (many points), smaller kernels preserve fine details. Close points yield kernel values near 1 (high similarity), while distant points approach 0 (low similarity).
 
-### Key Technical Features
+### Technical Features
 
 1. **Adaptive Kernel Bandwidth**: Uses k-th nearest neighbor distances for local density adaptation
    ```
