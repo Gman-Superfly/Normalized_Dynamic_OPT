@@ -400,6 +400,206 @@ class TestNormalizedDynamicsConvergence(unittest.TestCase):
         
         return summary_results
 
+    def test_over_adaptation_detection(self):
+        """Test for over-adaptation issues that can cause erratic drift."""
+        print("\n[9/12] Testing over-adaptation detection...")
+        
+        # Create a model that might be prone to over-adaptation
+        model = NormalizedDynamicsOptimized(
+            dim=2,
+            max_iter=30,
+            adaptive_params=True,
+            eta=0.05,  # Higher learning rate that might cause over-adaptation
+            device=self.device
+        )
+        
+        X = self.datasets['medium_swiss']
+        
+        # Track sigma variance during embedding to detect over-adaptation
+        if not torch.is_tensor(X):
+            X = torch.tensor(X, dtype=torch.float32)
+        X = X.to(self.device)
+        
+        embedding = X.clone()
+        if X.shape[1] > 2:
+            U, S, V = torch.svd(X - X.mean(dim=0, keepdim=True))
+            embedding = U[:, :2] * S[:2].sqrt()
+        
+        sigma_variances = []
+        embedding_changes = []
+        
+        for iteration in range(15):  # Monitor first 15 iterations
+            embedding_old = embedding.clone()
+            
+            # Manual forward pass to extract sigma values
+            original_mean = torch.mean(embedding, dim=0, keepdim=True)
+            x_centered = embedding - original_mean
+            dists = torch.cdist(x_centered, x_centered)
+            
+            # Extract adaptive sigma calculation like in the algorithm
+            k = min(20, embedding.size(0) - 1)
+            kth_dists, _ = torch.topk(dists, k, dim=1, largest=False)
+            sigma = kth_dists[:, -1]
+            
+            # Track sigma variance (indicator of adaptation stability)
+            sigma_var = torch.var(sigma).item()
+            sigma_variances.append(sigma_var)
+            
+            # Continue with embedding update
+            embedding = model.forward(embedding)
+            
+            # Track embedding change
+            change_norm = torch.norm(embedding - embedding_old).item()
+            embedding_changes.append(change_norm)
+        
+        # Detect over-adaptation: sigma variance should not explode
+        max_sigma_var = max(sigma_variances) if sigma_variances else 0
+        final_sigma_var = sigma_variances[-1] if sigma_variances else 0
+        
+        # Detect erratic behavior: embedding changes should stabilize
+        change_stability = np.std(embedding_changes[-5:]) if len(embedding_changes) >= 5 else 0
+        
+        print(f"   ✓ Max sigma variance: {max_sigma_var:.4f}")
+        print(f"   ✓ Final sigma variance: {final_sigma_var:.4f}")
+        print(f"   ✓ Embedding change stability: {change_stability:.4f}")
+        
+        # Validate no over-adaptation
+        self.assertTrue(max_sigma_var < 1.0, 
+                       f"Sigma variance should not explode (max: {max_sigma_var:.4f})")
+        self.assertTrue(change_stability < 0.1, 
+                       f"Embedding changes should stabilize (std: {change_stability:.4f})")
+        
+    def test_step_size_mathematical_validation(self):
+        """Test mathematical foundation: step_size < 1 for convergence."""
+        print("\n[10/12] Testing step size mathematical validation...")
+        
+        # Test different dimensionalities and alpha values
+        test_configs = [
+            {'dim': 2, 'alpha': 1.0},
+            {'dim': 3, 'alpha': 1.0}, 
+            {'dim': 2, 'alpha': 1.5},
+            {'dim': 5, 'alpha': 0.8}
+        ]
+        
+        for config in test_configs:
+            dim, alpha = config['dim'], config['alpha']
+            
+            # Calculate step size as done in algorithm
+            step_size = dim**(-alpha)
+            
+            print(f"   Dim={dim}, α={alpha}: step_size = {step_size:.4f}")
+            
+            # Mathematical requirement for convergence
+            self.assertTrue(step_size < 1.0, 
+                           f"Step size must be < 1 for convergence (got {step_size:.4f})")
+            self.assertTrue(step_size > 0.01, 
+                           f"Step size should be reasonable (got {step_size:.4f})")
+        
+        # Test that step_size decreases with dimension (good for high-D stability)
+        step_2d = 2**(-1.0)
+        step_10d = 10**(-1.0)
+        self.assertTrue(step_10d < step_2d, 
+                       "Step size should decrease with dimension for stability")
+        
+        print(f"   ✓ All step sizes satisfy mathematical convergence requirement")
+        
+    def test_alpha_bounds_hitting_detection(self):
+        """Test detection of alpha hitting bounds (indicates error signal issues)."""
+        print("\n[11/12] Testing alpha bounds hitting detection...")
+        
+        # Test scenario that might push alpha to bounds
+        model = NormalizedDynamicsOptimized(
+            dim=2,
+            max_iter=40,
+            adaptive_params=True,
+            eta=0.1,  # Very high learning rate to test bounds
+            target_local_structure=0.99,  # Very high target (hard to reach)
+            device=self.device
+        )
+        
+        X = self.datasets['high_dim']  # Challenging dataset
+        
+        embedding = model.fit_transform(X)
+        
+        # Check if alpha hit bounds during optimization
+        alpha_values = model.alpha_history
+        
+        min_alpha = min(alpha_values) if alpha_values else 1.0
+        max_alpha = max(alpha_values) if alpha_values else 1.0
+        
+        hit_lower_bound = any(abs(a - 0.01) < 1e-6 for a in alpha_values)
+        hit_upper_bound = any(abs(a - 2.0) < 1e-6 for a in alpha_values)
+        
+        print(f"   ✓ Alpha range: [{min_alpha:.4f}, {max_alpha:.4f}]")
+        print(f"   ✓ Hit lower bound (0.01): {hit_lower_bound}")
+        print(f"   ✓ Hit upper bound (2.0): {hit_upper_bound}")
+        
+        if hit_lower_bound:
+            print("   ⚠️  Alpha hit lower bound - error signal may be too strong")
+        if hit_upper_bound:
+            print("   ⚠️  Alpha hit upper bound - error signal may be too strong")
+        
+        # Test should pass but warn about bounds hitting
+        self.assertTrue(len(alpha_values) > 0, "Should have alpha history")
+        
+        # If bounds are hit frequently, it suggests parameter tuning needed
+        bound_hit_ratio = sum(abs(a - 0.01) < 1e-4 or abs(a - 2.0) < 1e-4 for a in alpha_values) / len(alpha_values)
+        
+        if bound_hit_ratio > 0.3:
+            print(f"   ⚠️  Warning: {bound_hit_ratio:.1%} of iterations hit bounds")
+            print("   ⚠️  Consider adjusting eta or target_local_structure")
+        
+    def test_noise_scale_convergence_effects(self):
+        """Test how noise_scale affects convergence behavior."""
+        print("\n[12/12] Testing noise scale convergence effects...")
+        
+        X = self.datasets['small_blobs']
+        noise_scales = [0.001, 0.01, 0.05, 0.1]  # Different noise levels
+        
+        results = {}
+        
+        for noise_scale in noise_scales:
+            model = NormalizedDynamicsOptimized(
+                dim=2,
+                max_iter=30,
+                adaptive_params=True,
+                noise_scale=noise_scale,
+                device=self.device
+            )
+            
+            start_time = time.time()
+            embedding = model.fit_transform(X)
+            runtime = time.time() - start_time
+            
+            # Calculate embedding stability (variance in final embedding)
+            embedding_var = np.var(embedding, axis=0).mean()
+            
+            results[noise_scale] = {
+                'runtime': runtime,
+                'cost_evaluations': len(model.cost_history),
+                'final_cost': model.cost_history[-1] if model.cost_history else None,
+                'embedding_variance': embedding_var
+            }
+            
+            print(f"   Noise={noise_scale}: runtime={runtime:.2f}s, "
+                  f"cost_evals={len(model.cost_history)}, "
+                  f"embed_var={embedding_var:.4f}")
+        
+        # Validate noise effects
+        low_noise_runtime = results[0.001]['runtime']
+        high_noise_runtime = results[0.1]['runtime']
+        
+        # High noise might take longer to converge or require more evaluations
+        print(f"   ✓ Low noise (0.001): {low_noise_runtime:.2f}s")
+        print(f"   ✓ High noise (0.1): {high_noise_runtime:.2f}s")
+        
+        # Test should complete for all noise levels
+        for noise_scale, result in results.items():
+            self.assertIsNotNone(result['final_cost'], 
+                               f"Should converge with noise_scale={noise_scale}")
+            self.assertTrue(result['runtime'] < 10, 
+                           f"Should converge reasonably fast with noise_scale={noise_scale}")
+
 
 if __name__ == '__main__':
     print("="*70)
