@@ -1,18 +1,18 @@
 # NormalizedDynamics: A Kernel-Based Manifold Learning Algorithm
 
-A specialized dimensionality reduction algorithm designed for preserving continuous relationships in scientific data, with particular focus on biological trajectory analysis.
+A specialized dimensionality reduction algorithm designed for preserving continuous relationships in scientific data, with particular focus on trajectory analysis and self stabilization.
 
 ## Overview
 
-NormalizedDynamics is a kernel-based iterative manifold learning algorithm that addresses specific challenges in computational biology where maintaining continuous trajectories is important. While not revolutionary, it offers a different approach to dimensionality reduction that may be useful for certain scientific applications.
+NormalizedDynamics is a kernel-based iterative manifold learning algorithm that addresses specific challenges in dimensionality reduction, for example  in biological data maintaining continuous trajectories is important,  it offers a specialized approach to dimensionality reduction that is useful for certain scientific applications.
 
 ### Key Characteristics
 
-- **Primary Application**: Single-cell developmental biology and continuous biological processes
-- **Broader Applications**: Astronomical surveys, time-series analysis, scientific data visualization
+- **Studied Application**: Single-cell developmental biology and continuous biological processes
+- **Broader Applications**: RL, CS, Astronomical surveys, time-series analysis, scientific data visualization
 - **Approach**: Adaptive kernel bandwidth with global connectivity preservation
-- **Scale**: Optimized for small to medium datasets (100-5000 samples)
-- **Philosophy**: Prioritizes geometric relationship preservation over speed
+- **Scale**: Optimized for realtime and small to medium datasets (100-5000 samples) for speed, larger datasets will take long processing time but yeald lowest distrotion.
+- **Philosophy**: Prioritizes geometric relationship preservation with self correction.
 
 ## Installation
 
@@ -282,6 +282,8 @@ Navigate to `http://localhost:5000` for:
 - **Real-Time Demos**: Streaming sensor simulations
 - **Smart Sampling**: Impact of different sampling strategies
 - **Interactive Visualizations**: Explore embeddings in real-time
+- **and more in web UI...
+    
 
 ## Smart Sampling for Large Datasets
 
@@ -376,18 +378,14 @@ normdyn/
 
 ## Future Directions
 
-- **Theoretical Analysis**: K-independence properties and mathematical foundations
-- **Extended Applications**: Hi-C genomics, spatial transcriptomics, network dynamics
+- **Theoretical Analysis**: K-independence properties need investingating as they are interesting and self stabilizing ... and mathematical foundations
+- **Extended Applications**: Hi-C genomics, spatial transcriptomics, network dynamics, Reinforcement Learning, Oprimisation algos....
 - **Free Energy Principle**: Connections to information theory and physics
 - **Performance Optimization**: Further scalability improvements
 
 ## Contributing
 
-We welcome contributions, particularly:
-- Additional biological dataset validation
-- Performance optimizations for larger datasets
-- Alternative kernel functions
-- Theoretical analysis and mathematical extensions
+They are welcome... just wait until it's all uploaded, July 2025... so after...
 
 ## Citation
 
@@ -396,10 +394,10 @@ If you find this work useful in your research, please cite:
 ```bibtex
 @misc{normalizedynamics2024,
   title={NormalizedDynamics: A Kernel-Based Algorithm for Biological Trajectory Preservation},
-  author={Research Implementation Team},
+  author={Oscar Goldman},
   year={2024},
-  url={https://github.com/yourusername/normdyn},
-  note={Implementation available at https://github.com/yourusername/normdyn}
+  url={https://github.com/Gman-Superfly/NormalizedDynamics},
+  note={Implementation available at https://github.com/Gman-Superfly/Normalized_Dynamic_OPT}
 }
 ```
 
@@ -416,7 +414,7 @@ We thank the computational biology community for feedback and guidance. Special 
 
 ---
 
-**Note**: This is a research implementation aimed at exploring alternative approaches to manifold learning in computational biology. While we've conducted comprehensive testing, users should evaluate the algorithm's suitability for their specific applications and compare against established methods like t-SNE and UMAP. 
+**Note**: This is a research implementation aimed at exploring alternative approaches to manifold learning. While we've conducted comprehensive testing, users should evaluate the algorithm's suitability for their specific applications and compare against established methods like t-SNE and UMAP, ND is useful for specific datasets and problems, it's not a one size fits all solution and it has many parameters to balance before it self balances and error corrects on it's own.
 
 
 ## 🏁 Summary ##
