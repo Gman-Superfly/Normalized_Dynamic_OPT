@@ -516,11 +516,6 @@ We thank the computational biology community for feedback and guidance. Special 
 
 NormalizedDynamics represents a **specialized contribution to manifold learning** with particular strengths in geometric preservation and computational efficiency. The algorithm demonstrates competitive performance on standard benchmarks while excelling in specific scenarios involving multi-scale, hierarchical, and structured data with distinct classes.
 
-###  **Contribution**
-- Kernel-based iterative approach with adaptive bandwidth
-- Comprehensive empirical characterization across multiple datasets
-- Efficient implementation with clear scope documentation
-- Honest assessment of algorithmic strengths and limitations
 
 ### ** Value**
 This work contributes to the manifold learning literature by providing:
