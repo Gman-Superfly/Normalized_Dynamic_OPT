@@ -20,8 +20,8 @@ NormalizedDynamics is a kernel-based iterative manifold learning algorithm that 
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/normdyn.git
-cd normdyn
+git clone https://github.com/Gman-Superfly/Normalized_Dynamic_OPT.git
+cd Normalized_Dynamic_OPT
 
 # Install dependencies
 pip install -r requirements.txt
