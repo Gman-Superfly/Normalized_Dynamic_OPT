@@ -153,10 +153,14 @@ In sparse regions (fewer points), larger kernels smooth over broader areas; in d
    ```
 
 3. **Global Connectivity**: Considers all pairwise relationships (O(n²) complexity)
-   - Comprehensive information integration across entire dataset
-   - Complete interaction matrix with adaptive bandwidth weighting
+   - Computes pairwise Euclidean distances using torch.cdist(x_centered, x_centered), where Euclidean distance is the straight-line measure: ||x_i - x_j|| = sqrt(Σ (x_ik - x_jk)^2), with squared form used in the Gaussian kernel.
+   - Comprehensive information integration across entire dataset, enabling global structure preservation while adapting to local density.
+   - Complete interaction matrix with adaptive bandwidth weighting via Gaussian kernel: K(h_i, h_j) = exp(-||h_i - h_j||² / (2σ_i²)), normalized to probabilities p(j|i).
 
 4. **Multi-Criteria Convergence**: Cost-based and stability-based stopping criteria
+   - Cost-based: Every 5 iterations (after iteration 10), computes cost = 0.3 * distortion + 0.7 * (1 - local_structure), where distortion is mean absolute difference in normalized distance matrices, and local_structure is average k-NN overlap (k=10). Increments patience counter on no improvement (<1e-5) or increase; stops at patience=5.
+   - Stability-based: Every iteration, checks if norm(embedding - embedding_old) < 1e-6; stops on convergence.
+   - Supports feedback loops for iterative refinement, including embedding updates, adaptive bandwidth (σ_i based on k-th neighbor distance), and alpha adjustment.
 
 5. **Free Energy Principle Emergence**: The algorithm naturally implements FEP through its mathematical structure
 
@@ -245,7 +249,7 @@ Early stopping in the algorithm prevents unnecessary iterations by halting when 
 
 These mechanisms ensure efficient convergence while maintaining quality.
 
-### Parameter Sensitivity and K-Independence
+### Parameter Sensitivity and K-Independence for certain settings and datasets
 
 The algorithm exhibits robustness to K (number of neighbors for bandwidth), often showing K-independence in tests. Reasons include:
 - **Uniform Data Density**: Similar σ_i across K values in evenly distributed data.
