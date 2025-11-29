@@ -2,6 +2,13 @@
 
 An advanced dimensionality reduction algorithm that combines kernel-based dynamics with sophisticated self-correction mechanisms, designed for preserving continuous relationships in scientific data with particular focus on trajectory analysis and real-time applications.
 
+This repo needs work, I need to bring it up to the same standard as the others 
+if you use the code you need to remo - from the main algo otherwise it will use deafult
+settings, just wait, it won't be long and it will be nice and shiny,
+the 83% claim is extremely optimized for a test system, you can use the
+realtime embeddings thats ok, but that test really needs work it's not up
+to the standard I would like for public repos.
+
 ## Overview
 
 NormalizedDynamics is a theoretically grounded manifold learning algorithm that addresses critical challenges in dimensionality reduction through multiple adaptive mechanisms. Unlike traditional approaches, it features **self-correcting dynamics** based on the Free Energy Principle, **multi-criteria early stopping**, and **real-time adaptation** capabilities.
@@ -389,3 +396,4 @@ This work contributes to the manifold learning literature by providing:
 - Comprehensive comparative analysis across multiple scientific domains
 - Open implementation with extensive evaluation framework for reproducible research
 - Clear guidance on optimal applications and limitations for informed method selection
+
