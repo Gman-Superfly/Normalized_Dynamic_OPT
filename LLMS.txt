@@ -427,18 +427,20 @@ data/
 ### Documentation & Methodology
 ```
 docs/
-├── METHODOLOGY_TRANSPARENCY.md                    # Enhanced evaluation methodology
-├── NormalizedDynamics_Technical_Documentation.py  # Complete algorithm specification
-├── PROJECT_ORGANIZATION_PLAN.md                   # Repository organization and strategy
-├── Publication_Summary.md                         # Research findings summary
-├── README_overview.md                             # Project overview documentation
-├── README_Scientific_Archive.md                   # Comprehensive scientific documentation
-├── README_SMART_SAMPLING_ACHIEVEMENT.md           # Smart sampling achievements
-├── README_tests.md                                # Test documentation
-├── REPOSITORY_EXCELLENCE_SUMMARY.md               # Excellence documentation
-├── SMART_SAMPLING.md                              # Sampling methodology documentation
-├── SMART_SAMPLING_RESULTS.md                      # Smart sampling analysis results
-└── TEST_SETUP_SUMMARY.md                          # Test infrastructure documentation
+├── ALGO_SUMMARY.md                              # Algorithm summary
+├── METHODOLOGY_TRANSPARENCY.md                   # Enhanced evaluation methodology
+├── ND_OPT_OVERVIEW.md                            # Overview documentation
+├── NormalizedDynamics_OG_Technical_Documentation_deprecated_FEB_2025.py # Algorithm specification
+├── README_WRITEUP.md                             # Comprehensive documentation
+├── repo_plans/                                   # Project planning documents
+│   ├── PROJECT_ORGANIZATION_PLAN.md              # Repository organization and strategy
+│   └── REPOSITORY_EXCELLENCE_SUMMARY.md          # Excellence documentation
+├── smart_sampling/                               # Smart sampling documentation
+│   ├── SMART_SAMPLING.md                         # Sampling methodology documentation
+│   └── SMART_SAMPLING_RESULTS.md                 # Smart sampling analysis results
+└── tests/                                        # Test documentation
+    ├── README_tests.md                           # Test documentation
+    └── TEST_SETUP_SUMMARY.md                     # Test infrastructure documentation
 ```
 
 ### Utilities
@@ -483,5 +485,5 @@ utils/
 - **Real-time capability**: Excellent for small datasets (<2000 samples) enabling interactive exploration
 - **Scientific utility**: Maintains physically meaningful relationships in visualization
 
-This project represents a specialized contribution to manifold learning with particular strengths in biological trajectory preservation 
+This project represents an interesting and useful contribution to manifold learning with particular strengths in biological trajectory preservation 
 and scientific data analysis where geometric fidelity is essential for accurate interpretation. 

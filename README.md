@@ -1,35 +1,35 @@
 # NormalizedDynamics: A Self-Adapting Kernel-Based Manifold Learning Algorithm
 
-An advanced dimensionality reduction algorithm that combines kernel-based dynamics with sophisticated self-correction mechanisms, designed for preserving continuous relationships in scientific data with particular focus on trajectory analysis and real-time applications.
+NormalizedDynamics combines kernel-based dynamics with adaptive bandwidths and early-stopping controls to preserve continuous relationships. It targets small and medium datasets (larger sets possible with scaling) where trajectory continuity matters, the demos include biological and astronomical data, one of the main features is support for real-time streaming of embedding updates (try the multi sensor real-time demo).
 
-This repo needs work, I need to bring it up to the same standard as the others 
-if you use the code you need to remo - from the main algo otherwise it will use deafult
-settings, just wait, it won't be long and it will be nice and shiny,
-the 83% claim is extremely optimized for a test system, you can use the
-realtime embeddings thats ok, but that test really needs work it's not up
-to the standard I would like for public repos.
+## Context
+- This repository is under active refinement. Older documentation references (`docs/…`) are not present in the current tree; this README is the current source of truth.
+- Reported performance figures are historical. Reproduce them on your data before relying on them.
 
-## Overview
+## Problem
+Preserving trajectories and local structure is difficult when data density varies and samples arrive over time. Traditional manifold learners struggle to keep global connectivity while avoiding geometric distortion in these settings.
 
-NormalizedDynamics is a theoretically grounded manifold learning algorithm that addresses critical challenges in dimensionality reduction through multiple adaptive mechanisms. Unlike traditional approaches, it features **self-correcting dynamics** based on the Free Energy Principle, **multi-criteria early stopping**, and **real-time adaptation** capabilities.
+## Solution
+- Adaptive kernels with bandwidth from local neighbor distances while keeping full pairwise connectivity.
+- Step-size control and multi-criteria early stopping to stabilize optimization.
+- Optional smart sampling plus dynamic K selection for density-varying datasets.
+- Streaming entry points that maintain a bounded history for incremental updates.
 
-### Key Technical Capabilities
+## Capabilities (operational claims)
+- Smart sampling integration: historical internal runs reported about 83 percent size reduction while preserving observed cell type diversity, with 5–15 percent trajectory smoothness gains. Reproduce on your data; artifacts are not bundled.
+- Dynamic K adaptation: size-aware and density-aware neighbor counts (examples from prior runs: 2000 cells → K≈28, 3000 cells → K≈35) to balance stability and locality.
+- Real-time streaming: incremental embedding updates with optional history cap for sensor-style data.
+- Tunable structure-geometry balance: cost weighting between local structure and distortion (default 70-30) plus convergence and stability checks.
+- Free Energy Principle framing: energy-entropy balance guides adaptation; see algorithm overview for the explicit forms.
+- Scale preservation: per-feature standard deviation is maintained after each update.
 
-- **Smart Sampling Integration**: Intelligent biological data preparation with 83% size reduction while preserving cell type diversity, showing 5-15% performance improvements in testing
-- **Dynamic K Adaptation**: Automatic parameter optimization (2000 cells → K≈28, 3000 cells → K≈35) with observed 4-9% trajectory smoothness improvements
-- **Real-Time Streaming Capability**: Live data processing with incremental embedding updates, demonstrated through interactive sensor simulations and streaming demos
-- **Tunable Structure-Geometry Balance**: Configurable 70-30 weighting (local structure vs geometric distortion) in convergence criteria, adaptable to dataset characteristics
-- **Multi-Criteria Convergence**: Sophisticated early stopping with cost-based and stability-based criteria for optimal embedding quality
-- **Free Energy Principle Foundation**: Naturally implements FEP through energy-entropy balance, providing theoretical grounding for trajectory preservation
-- **Adaptive Kernel Architecture**: Local density-aware bandwidth adjustment with global connectivity analysis (O(n²) pairwise relationships)
-- **Scale Preservation**: Maintains feature-wise standard deviations during iteration to prevent geometric distortion
+## Applications
+- Single-cell developmental biology, RNA-seq trajectory analysis, stem cell studies.
+- Astronomical surveys (e.g., GAIA), time-series with continuous trends.
+- Sensor monitoring, interactive visualization, reinforcement learning diagnostics.
+- Best suited for ≤2000 samples in real-time settings and up to roughly 5000 samples for higher-precision offline analysis.
 
-### Applications
-
-- **Primary Domain**: Single-cell developmental biology, RNA-seq trajectory analysis, stem cell research
-- **Scientific Applications**: Astronomical surveys (GAIA), time-series analysis, continuous biological processes
-- **Technical Applications**: Reinforcement learning, sensor monitoring, interactive visualization, streaming data analysis
-- **Optimal Scale**: Real-time processing for small datasets (≤2000 samples), high-precision analysis for medium datasets (2000-5000 samples)
+**Note: the mouse cortical tets will be moved to another repo as it uses modal backend which can be annoying if you just want to run the other tets**
 
 ## Installation
 
@@ -43,6 +43,9 @@ pip install -r requirements.txt
 ```
 
 ### Dependencies
+- Core: PyTorch (GPU recommended), NumPy, SciPy, scikit-learn, Polars.
+- Web/demo: Flask, Matplotlib, Seaborn.
+- Extended analysis: scanpy, UMAP, astroquery/astropy when those comparisons or datasets are used.
 
 **Core Requirements:**
 - PyTorch (GPU support recommended)
@@ -62,7 +65,7 @@ pip install -r requirements.txt
 ```python
 from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized
 
-# Initialize with adaptive features enabled
+# Initialize with adaptive features enabled :
 nd = NormalizedDynamicsOptimized(
     dim=2,                    # Target dimensions
     k=20,                     # Base neighbors (auto-adapted)
@@ -72,28 +75,26 @@ nd = NormalizedDynamicsOptimized(
     device='cpu'              # or 'cuda' for GPU
 )
 
-# Fit and transform your data
+# Fit and transform your data:
 X_embedded = nd.fit_transform(X)
 ```
 
-### Optimal: Smart Sampling + Dynamic K
-
+# Smart sampling:
 ```python
 from src.smart_sampling import BiologicalSampler
 from src.normalized_dynamics_smart_k import create_smart_k_algorithm
 
-# For large datasets: Apply smart sampling first
 sampler = BiologicalSampler(target_size=15000)
 sampled_indices = sampler.hybrid_sample(X, spatial_coords)
 
-# Then use dynamic K adaptation
+# Dynamic K:
 nd_smart = create_smart_k_algorithm(
     dataset_size=len(sampled_indices),
-    strategy='smart',
-    device='cpu'
+    strategy="smart",
+    device="cpu"
 )
 
-# Process the optimized dataset
+# Process the optimized dataset :
 X_embedded = nd_smart.fit_transform(X[sampled_indices])
 ```
 
@@ -143,16 +144,23 @@ The algorithm implements iterative dynamics with kernel-weighted drift and adapt
 
 ```
 h^(t+1) = h^(t) + α × Δt × (G[h^(t)] - h^(t)) + η
-```
 
 Where:
 - `G[h]`: Kernel-weighted drift function (neighborhood consensus)
 - `α`: Adaptive step size parameter with feedback control
 - `Δt`: Dimension-dependent time step (d^(-α))
 - `η`: Optional stochastic exploration noise
+```
 
-### Core Technical Features
+Core technical features:
+- Adaptive kernel bandwidth: k-th neighbor distances set σ_i; Gaussian kernel on full pairwise distances.
+- Early stopping and cost: cost = 0.3 × distortion + 0.7 × (1 - local_structure), evaluated periodically with patience.
+- Free Energy Principle framing: `F[H] = U[H] - T·S[H]`, with energy from prediction error and entropy from neighborhood uncertainty.
+- Scale preservation: rescale to original per-feature standard deviations each iteration.
+- Smart sampling integration: spatial, expression, and hybrid strategies available; dynamic K scales with dataset size.
+- Streaming architecture: incremental updates with a configurable history buffer.
 
+In Depth:
 **1. Adaptive Kernel Bandwidth**
 - Uses k-th nearest neighbor distances: `σ_i = ||h_i - h_i^(k)||₂`
 - Gaussian kernel: `K(h_i, h_j) = exp(-||h_i - h_j||²/(2σ_i²))`
@@ -186,7 +194,7 @@ Where:
 - **Interactive Demonstrations**: Web-based streaming sensor simulations
 - **Production Ready**: Designed for sensor monitoring and live data visualization
 
-### Computational Characteristics
+### Computational Characteristics 
 
 - **Time Complexity**: O(n²d) per iteration with global connectivity
 - **Space Complexity**: O(n²) for distance and kernel matrices
@@ -211,8 +219,7 @@ tests/
 └── smart_sampling_enhanced_analysis.py # Sampling strategy analysis
 ```
 
-### Benchmark Results
-
+Benchmark results (historical; reproduce before use):
 | Dataset | Geometric Distortion | Local Structure | Trajectory Smoothness |
 |---------|---------------------|-----------------|----------------------|
 | Pancreas Development | 0.0089 | 0.710 | 0.660 |
@@ -220,32 +227,33 @@ tests/
 | Wine Classification | 0.0034 | 0.850 | N/A |
 | Multi-Scale Circles | 0.0012 | 0.920 | N/A |
 
-### Running Evaluations
-
+Running evaluations:
 ```bash
-# Run comprehensive test suite
 python src/run_tests.py
 
 # Run specific evaluations
 python tests/test_pancreas_endocrinogenesis.py     # Biological validation
 python tests/test_gaia_data.py                     # Astronomical data
 ```
+Outputs, when produced, are written to `static/results/` with timestamped names.
 
-Results are saved in `static/results/` with timestamp-based naming.
+## Performance characteristics
+- Global connectivity with adaptive bandwidths for density variation.
+- Trajectory continuity and streaming-friendly updates with bounded history.
+- Tunable balance between local structure preservation and geometric distortion.
+- Free Energy Principle framing for energy/entropy trade-offs.
 
-## Performance Characteristics
+Limitations:
+- O(n²) time and space; large datasets require sampling or batching.
+- Local structure preservation can vary (historical range 46–85 percent) relative to methods that optimize locality only.
+- 3D manifold unfolding and highly curved geometries may need specialized settings.
 
 ### Strengths
 - **Global Structure Preservation**: Maintains physically meaningful spatial relationships
 - **Trajectory Continuity**: Avoids artificial fragmentation in developmental processes  
 - **Adaptive Behavior**: Self-adjusts to local data density and manifold characteristics
 - **Real-Time Capability**: Interactive applications and live sensor monitoring
-- **Theoretical Foundation**: Grounded in Free Energy Principle for robust performance
 
-### Limitations
-- **Computational Complexity**: O(n²) scaling limits large dataset applicability
-- **Local Structure Trade-off**: 46-85% preservation (sometimes lower than t-SNE/UMAP)
-- **3D Manifold Challenges**: Complex unfolding tasks may require specialized approaches
 
 ### Optimal Use Cases
 - **Developmental Biology**: RNA-seq trajectory analysis, stem cell differentiation
@@ -253,32 +261,34 @@ Results are saved in `static/results/` with timestamp-based naming.
 - **Real-Time Applications**: Sensor monitoring, interactive visualization (≤2000 samples)
 - **Scientific Datasets**: Applications requiring continuous relationship preservation
 
-## Smart Sampling + Dynamic K Optimization
+## Smart sampling and dynamic K results (historical)
+- Size reduction: about 83 percent while keeping observed cell type diversity in prior internal tests.
+- Trajectory smoothness: historical gains of 5–15 percent.
+- Example K scaling: 2000 cells → K≈28, 3000 cells → K≈35.
 
-Integration of intelligent data preparation with adaptive parameter optimization shows consistent performance improvements in our testing.
 
-### Performance Summary
 
-- **Size Reduction**: 83% dataset reduction while preserving cell type diversity
-- **Trajectory Smoothness**: 5-15% improvement observed across test cases
-- **Parameter Scaling**: Automatic K adjustment based on dataset size (2000 cells → K≈28, 3000 cells → K≈35)
-- **Methodology**: Transparent approach with documented evaluation metrics
-
-### Performance Results
-
+Performance table (historical):
 | Strategy | Trajectory Smoothness | Improvement | Runtime |
 |----------|----------------------|-------------|---------|
 | Random Sampling | 0.447 | baseline | 106.1s |
-| Smart + Dynamic K | **0.480** | +7.4% | 130.4s |
-| Hybrid + Dynamic K | **0.429** | +8.7% | 128.4s |
+| Smart + Dynamic K | 0.480 | +7.4% | 130.4s |
+| Hybrid + Dynamic K | 0.429 | +8.7% | 128.4s |
 
-**Note on Performance Variability**: Results depend on dataset characteristics and geometric complexity. As a geometry-preserving algorithm with self-adapting, error-correcting mechanisms, NormalizedDynamics optimizes for geometric fidelity rather than uniformly maximizing trajectory smoothness. Some combinations may prioritize global structure preservation over local smoothness metrics, reflecting the algorithm's adaptive response to intrinsic data properties and manifold characteristics.
+**Note on Performance Variability**: Results depend on dataset characteristics and 
+geometric complexity. As a geometry-preserving algorithm with self-adapting, 
+error-correcting mechanisms, NormalizedDynamics optimizes for geometric fidelity rather 
+than uniformly maximizing trajectory smoothness. Some combinations may prioritize global 
+structure preservation over local smoothness metrics, reflecting the algorithm's adaptive 
+response to intrinsic data properties and manifold characteristics.
 
-### Intelligent Sampling Strategies
-
-1. **Spatial Stratified Sampling**: Preserves tissue architecture through grid-based spatial sampling
-2. **Expression Diversity Sampling**: Maintains cell type diversity using clustering-based selection
-3. **Hybrid Sampling**: Combines spatial and expression strategies for optimal biological preservation
+Sampling strategies:
+1) Spatial stratified sampling: Preserves tissue architecture through grid-based 
+spatial sampling
+2) Expression diversity: Maintains cell type diversity using clustering-based 
+selection
+3) Hybrid: Combines spatial and expression strategies for optimal biological 
+preservation
 
 ### Usage
 
@@ -340,10 +350,10 @@ Normalized_Dynamic_OPT/
 
 ## Documentation
 
-- **Technical Specification**: [`docs/NormalizedDynamics_Technical_Documentation.py`](docs/NormalizedDynamics_Technical_Documentation.py)
+- **Technical Specification**: [`docs/NormalizedDynamics_OG_Technical_Documentation_deprecated_FEB_2025.py`](docs/NormalizedDynamics_OG_Technical_Documentation_deprecated_FEB_2025.py)
 - **Evaluation Framework**: [`docs/METHODOLOGY_TRANSPARENCY.md`](docs/METHODOLOGY_TRANSPARENCY.md)
-- **Test Infrastructure**: [`docs/README_tests.md`](docs/README_tests.md)
-- **Project Organization**: [`docs/PROJECT_ORGANIZATION_PLAN.md`](docs/PROJECT_ORGANIZATION_PLAN.md)
+- **Test Infrastructure**: [`docs/tests/README_tests.md`](docs/tests/README_tests.md)
+- **Project Organization**: [`docs/repo_plans/PROJECT_ORGANIZATION_PLAN.md`](docs/repo_plans/PROJECT_ORGANIZATION_PLAN.md)
 
 ## Future Directions
 
@@ -354,25 +364,15 @@ Normalized_Dynamic_OPT/
 
 ## Contributing
 
-Contributions are welcome! Please refer to our contribution guidelines in the documentation. The repository is actively maintained and open for community contributions.
+Contributions are welcome! Please submit pull requests or issues directly. The repository is actively maintained and open for community contributions.
 
 ## Citation
 
-If you find this work useful in your research, please cite:
-
-```bibtex
-@misc{normalizedynamics2024,
-  title={NormalizedDynamics: A Self-Adapting Kernel-Based Algorithm for Biological Trajectory Preservation},
-  author={Oscar Goldman},
-  year={2024},
-  url={https://github.com/Gman-Superfly/Normalized_Dynamic_OPT},
-  note={Advanced manifold learning with Free Energy Principle foundations}
-}
-```
+- Authors: Oscar Goldman - Shogu research Group @ Datamutant.ai (subsidiary of 温心重工業)  
+- Message: "Thank you for reading, this is ongoing work we would like to know your opinions and experiments, thank you."
 
 ## License
-
-MIT License - see LICENSE file for details.
+Code MIT License (docs cc4).
 
 ## Acknowledgments
 
@@ -387,13 +387,10 @@ We thank the computational biology community for feedback and guidance. Special 
 
 ## Summary
 
-NormalizedDynamics represents a **specialized contribution to manifold learning** with particular strengths in geometric preservation, adaptive behavior, and theoretical grounding. The algorithm demonstrates competitive performance on standard benchmarks while excelling in scenarios involving trajectory analysis, continuous biological processes, and real-time applications.
+We optimize this algorithm for:
+1.  **Trajectory Analysis**: Continuous biological processes (e.g., cell differentiation).
+2.  **Scientific Data**: Systems where theoretical grounding matters (e.g., astronomy).
+3.  **Real-time Adaptation**: Scenarios requiring incremental updates.
 
-### Research Value
-
-This work contributes to the manifold learning literature by providing:
-- A theoretically grounded self-adapting algorithm with Free Energy Principle foundations
-- Comprehensive comparative analysis across multiple scientific domains
-- Open implementation with extensive evaluation framework for reproducible research
-- Clear guidance on optimal applications and limitations for informed method selection
+We provide this implementation and the accompanying evaluation framework to enable reproducible comparisons with established methods.
 
