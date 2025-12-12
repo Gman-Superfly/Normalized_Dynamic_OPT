@@ -45,20 +45,206 @@ document.addEventListener('DOMContentLoaded', () => {
     const runWineButton = document.getElementById('run-wine-btn');
     const resultsContainer = document.getElementById('results-container');
 
+    // Kernel selection helpers (optional per page)
+    function getKernelType() {
+        const selectedKernel = document.querySelector('input[name="kernel_type"]:checked');
+        return selectedKernel ? selectedKernel.value : 'exponential';
+    }
+
+    function getKernelParam() {
+        const paramEl = document.getElementById('kernel-param');
+        if (!paramEl) return null;
+        const parsed = parseFloat(paramEl.value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getKernelConfig() {
+        const kernelType = getKernelType();
+        const kernelParam = getKernelParam();
+
+        const cfg = { kernel_type: kernelType };
+        if (kernelType === 'generalized' && kernelParam !== null) cfg.kernel_p = kernelParam;
+        if (kernelType === 'student_t' && kernelParam !== null) cfg.kernel_nu = kernelParam;
+        if (kernelType === 'rational_quadratic' && kernelParam !== null) cfg.kernel_alpha = kernelParam;
+
+        const betaEl = document.getElementById('kernel-beta');
+        if (betaEl) {
+            const betaParsed = parseFloat(betaEl.value);
+            if (Number.isFinite(betaParsed)) cfg.kernel_beta = betaParsed;
+        }
+        const autoEl = document.getElementById('learn-kernel-beta');
+        if (autoEl) cfg.learn_kernel_beta = Boolean(autoEl.checked);
+
+        return cfg;
+    }
+
+    // SmartK (K adaptation) helpers (optional per page)
+    function getKAdaptationStrategy() {
+        const selected = document.querySelector('input[name="k_adaptation_strategy"]:checked');
+        return selected ? selected.value : 'off';
+    }
+
+    function getKBase() {
+        const el = document.getElementById('k-base');
+        if (!el) return null;
+        const parsed = parseInt(el.value, 10);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getSmartKConfig() {
+        const strategy = getKAdaptationStrategy();
+        const cfg = { k_adaptation_strategy: strategy };
+        if (strategy === 'fixed') {
+            const kBase = getKBase();
+            if (kBase !== null) cfg.k_base = kBase;
+        }
+        return cfg;
+    }
+
+    function updateSmartKUI(strategy) {
+        const container = document.getElementById('k-base-container');
+        if (!container) return;
+        container.style.display = (strategy === 'fixed') ? 'flex' : 'none';
+    }
+
+    // Smart sampling helpers (optional per page)
+    function getSamplingMethod() {
+        const selected = document.querySelector('input[name="sampling_method"]:checked');
+        return selected ? selected.value : 'off';
+    }
+
+    function getSamplingTargetSize() {
+        const el = document.getElementById('sampling-target-size');
+        if (!el) return null;
+        const parsed = parseInt(el.value, 10);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getSamplingSpatialWeight() {
+        const el = document.getElementById('sampling-spatial-weight');
+        if (!el) return null;
+        const parsed = parseFloat(el.value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getSmartSamplingConfig() {
+        const method = getSamplingMethod();
+        const cfg = { sampling_method: method };
+
+        if (method !== 'off') {
+            const target = getSamplingTargetSize();
+            if (target !== null) cfg.target_size = target;
+
+            if (method === 'hybrid') {
+                const w = getSamplingSpatialWeight();
+                if (w !== null) cfg.spatial_weight = w;
+            }
+        }
+
+        return cfg;
+    }
+
+    function updateSmartSamplingUI(method) {
+        const targetContainer = document.getElementById('sampling-target-container');
+        const hybridContainer = document.getElementById('sampling-hybrid-container');
+
+        if (targetContainer) targetContainer.style.display = (method === 'off') ? 'none' : 'flex';
+        if (hybridContainer) hybridContainer.style.display = (method === 'hybrid') ? 'flex' : 'none';
+    }
+
+    function updateKernelUI(kernelType) {
+        const descEl = document.getElementById('kernel-description');
+        const paramContainer = document.getElementById('kernel-param-container');
+        const paramLabel = document.getElementById('kernel-param-label');
+        const paramEl = document.getElementById('kernel-param');
+
+        if (paramContainer && paramLabel && paramEl) {
+            const lastKernelType = paramEl.dataset.lastKernelType;
+            if (kernelType === 'generalized') {
+                paramContainer.style.display = 'flex';
+                paramLabel.textContent = 'p';
+                if (lastKernelType !== kernelType) paramEl.value = '1.5';
+                paramEl.dataset.lastKernelType = kernelType;
+            } else if (kernelType === 'student_t') {
+                paramContainer.style.display = 'flex';
+                paramLabel.textContent = 'ν';
+                if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                paramEl.dataset.lastKernelType = kernelType;
+            } else if (kernelType === 'rational_quadratic') {
+                paramContainer.style.display = 'flex';
+                paramLabel.textContent = 'α';
+                if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                paramEl.dataset.lastKernelType = kernelType;
+            } else {
+                paramContainer.style.display = 'none';
+            }
+        }
+
+        if (!descEl) return;
+
+        if (kernelType === 'gaussian') {
+            descEl.innerHTML = '<strong>Gaussian:</strong> K = exp(-d² / (2σ²)) - Squared distance decay, standard RBF kernel formula';
+        } else if (kernelType === 'generalized') {
+            descEl.innerHTML = '<strong>Generalized:</strong> K = exp(-(d^p) / (2σ²)) - Generalized exponential family (tune p)';
+        } else if (kernelType === 'student_t') {
+            descEl.innerHTML = '<strong>Student-t:</strong> K = (1 + d²/(νσ²))^(-(ν+1)/2) - Heavy-tailed kernel (tune ν)';
+        } else if (kernelType === 'rational_quadratic') {
+            descEl.innerHTML = '<strong>Rational quadratic:</strong> K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture (tune α)';
+        } else {
+            descEl.innerHTML = '<strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data';
+        }
+    }
+
+    // Kernel type selection event listeners
+    document.querySelectorAll('input[name="kernel_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateKernelUI(e.target.value);
+        });
+    });
+
+    // Initialize UI based on default selection
+    updateKernelUI(getKernelType());
+
     // Only add GAIA button listener if the button exists on this page
     if (runGaiaButton) {
         runGaiaButton.addEventListener('click', () => {
             const selectedSize = document.querySelector('input[name="dataset_size"]:checked').value;
-            runAnalysis('/run', { size: selectedSize }, runGaiaButton, 'Run Gaia Analysis');
+            const kernelCfg = getKernelConfig();
+            const smartKCfg = getSmartKConfig();
+            const smartSamplingCfg = getSmartSamplingConfig();
+            runAnalysis('/run', { size: selectedSize, ...kernelCfg, ...smartKCfg, ...smartSamplingCfg }, runGaiaButton, 'Run Gaia Analysis');
         });
     }
 
     // Only add wine button listener if the button exists on this page
     if (runWineButton) {
         runWineButton.addEventListener('click', () => {
-            runAnalysis('/run_wine', {}, runWineButton, 'Run Wine Dataset Analysis');
+            const kernelCfg = getKernelConfig();
+            const smartKCfg = getSmartKConfig();
+            const smartSamplingCfg = getSmartSamplingConfig();
+            runAnalysis('/run_wine', { ...kernelCfg, ...smartKCfg, ...smartSamplingCfg }, runWineButton, 'Run Wine Dataset Analysis');
         });
     }
+
+    // SmartK strategy listeners (if present)
+    document.querySelectorAll('input[name="k_adaptation_strategy"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateSmartKUI(e.target.value);
+        });
+    });
+
+    // Initialize SmartK UI
+    updateSmartKUI(getKAdaptationStrategy());
+
+    // Smart sampling listeners (if present)
+    document.querySelectorAll('input[name="sampling_method"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateSmartSamplingUI(e.target.value);
+        });
+    });
+
+    // Initialize smart sampling UI
+    updateSmartSamplingUI(getSamplingMethod());
 
     function runAnalysis(endpoint, body, button, buttonText) {
         // Show a loading state

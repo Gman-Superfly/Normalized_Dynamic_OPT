@@ -15,14 +15,14 @@
     
     <!-- Navigation -->
     <nav>
-        <a href="/">🍷 Wine Analysis</a>
-        <a href="/gaia-analysis">📊 GAIA Analysis</a>
-        <a href="/streaming-demo">🚀 Streaming Demo</a>
-        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
-        <a href="/biological-metrics">📈 Biological Metrics</a>
-        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
-        <a href="/mouse-brain-cortical" class="active">🧠 Brain Cortical</a>
-        <a href="/smart-sampling">🧠 Smart Sampling</a>
+        <a href="/">Wine Analysis</a>
+        <a href="/gaia-analysis">GAIA Analysis</a>
+        <a href="/streaming-demo">Streaming Demo</a>
+        <a href="/pancreas-analysis">Single-Cell Analysis</a>
+        <a href="/biological-metrics">Biological Metrics</a>
+        <a href="/synthetic-developmental">Synthetic Data</a>
+        <a href="/mouse-brain-cortical" class="active">Brain Cortical</a>
+        <a href="/smart-sampling">Smart Sampling</a>
     </nav>
 
     <main>
@@ -107,7 +107,127 @@
                     <label for="metric_ordering">Layer Ordering (anatomical sequence)</label>
                 </div>
             </fieldset>
-            
+
+            <!-- Kernel Type Selection -->
+            <fieldset>
+                <legend>Algorithm Configuration</legend>
+                <div style="margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 10px;">Kernel Type</h4>
+                    <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                        Select the kernel function for distance weighting
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="exponential" checked id="kernel-exponential">
+                            <span><strong>Exponential</strong> (default)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="gaussian" id="kernel-gaussian">
+                            <span><strong>Gaussian</strong> (standard RBF)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="generalized" id="kernel-generalized">
+                            <span><strong>Generalized</strong> (p)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="student_t" id="kernel-student-t">
+                            <span><strong>Student-t</strong> (ν)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="rational_quadratic" id="kernel-rational-quadratic">
+                            <span><strong>Rational quadratic</strong> (α)</span>
+                        </label>
+                    </div>
+                    <div id="kernel-param-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                        <label id="kernel-param-label" for="kernel-param" style="font-size: 12px; color: var(--border-color);">p</label>
+                        <input id="kernel-param" type="number" min="0.1" step="0.1" value="1.5" style="width: 100px;">
+                    </div>
+                    <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <label for="kernel-beta" style="font-size: 12px; color: var(--border-color);">Slope β</label>
+                        <input id="kernel-beta" type="number" min="0.1" step="0.1" value="1.0" style="width: 100px;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input id="learn-kernel-beta" type="checkbox">
+                            <span style="font-size: 12px;">Auto-tune β</span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px; color: var(--border-color); text-align: center;">
+                        <div id="kernel-description">
+                            <strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Smart sampling</legend>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Optional downsampling before analysis. Off uses the full dataset.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="off" checked>
+                        <span><strong>Off</strong> (default)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="random">
+                        <span><strong>Random</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="expression">
+                        <span><strong>Expression</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="spatial">
+                        <span><strong>Spatial</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="hybrid">
+                        <span><strong>Hybrid</strong></span>
+                    </label>
+                </div>
+                <div id="sampling-target-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="sampling-target-size" style="font-size: 12px; color: var(--border-color);">Target size</label>
+                    <input id="sampling-target-size" type="number" min="100" step="100" value="2000" style="width: 120px;">
+                </div>
+                <div id="sampling-hybrid-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="sampling-spatial-weight" style="font-size: 12px; color: var(--border-color);">Hybrid spatial weight</label>
+                    <input id="sampling-spatial-weight" type="number" min="0" max="1" step="0.05" value="0.7" style="width: 120px;">
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>K adaptation (SmartK)</legend>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Controls how the neighbor count K is chosen during bandwidth selection.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="off" checked>
+                        <span><strong>Off</strong> (default)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="fixed">
+                        <span><strong>Fixed</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="size">
+                        <span><strong>Size</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="density">
+                        <span><strong>Density</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="smart">
+                        <span><strong>Smart</strong></span>
+                    </label>
+                </div>
+                <div id="k-base-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="k-base" style="font-size: 12px; color: var(--border-color);">Base K</label>
+                    <input id="k-base" type="number" min="2" step="1" value="20" style="width: 100px;">
+                </div>
+            </fieldset>
+
             <button id="run-cortical-analysis-btn">Run Cortical Analysis</button>
         </div>
         
@@ -215,16 +335,194 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const runButton = document.getElementById('run-cortical-analysis-btn');
-            
+
+            // Kernel type selection
+            document.querySelectorAll('input[name="kernel_type"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    updateKernelUI(e.target.value);
+                });
+            });
+
+            function getSelectedKernelType() {
+                const selected = document.querySelector('input[name="kernel_type"]:checked');
+                return selected ? selected.value : 'exponential';
+            }
+
+            function getKernelParam() {
+                const paramEl = document.getElementById('kernel-param');
+                if (!paramEl) return null;
+                const parsed = parseFloat(paramEl.value);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function getKernelConfig() {
+                const kernelType = getSelectedKernelType();
+                const kernelParam = getKernelParam();
+
+                const cfg = { kernel_type: kernelType };
+                if (kernelType === 'generalized' && kernelParam !== null) cfg.kernel_p = kernelParam;
+                if (kernelType === 'student_t' && kernelParam !== null) cfg.kernel_nu = kernelParam;
+                if (kernelType === 'rational_quadratic' && kernelParam !== null) cfg.kernel_alpha = kernelParam;
+
+                const betaEl = document.getElementById('kernel-beta');
+                if (betaEl) {
+                    const betaParsed = parseFloat(betaEl.value);
+                    if (Number.isFinite(betaParsed)) cfg.kernel_beta = betaParsed;
+                }
+                const autoEl = document.getElementById('learn-kernel-beta');
+                if (autoEl) cfg.learn_kernel_beta = Boolean(autoEl.checked);
+                return cfg;
+            }
+
+            function getKAdaptationStrategy() {
+                const selected = document.querySelector('input[name="k_adaptation_strategy"]:checked');
+                return selected ? selected.value : 'off';
+            }
+
+            function getKBase() {
+                const el = document.getElementById('k-base');
+                if (!el) return null;
+                const parsed = parseInt(el.value, 10);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function getSmartKConfig() {
+                const strategy = getKAdaptationStrategy();
+                const cfg = { k_adaptation_strategy: strategy };
+                if (strategy === 'fixed') {
+                    const kBase = getKBase();
+                    if (kBase !== null) cfg.k_base = kBase;
+                }
+                return cfg;
+            }
+
+            function updateSmartKUI(strategy) {
+                const container = document.getElementById('k-base-container');
+                if (!container) return;
+                container.style.display = (strategy === 'fixed') ? 'flex' : 'none';
+            }
+
+            function getSamplingMethod() {
+                const selected = document.querySelector('input[name="sampling_method"]:checked');
+                return selected ? selected.value : 'off';
+            }
+
+            function getSamplingTargetSize() {
+                const el = document.getElementById('sampling-target-size');
+                if (!el) return null;
+                const parsed = parseInt(el.value, 10);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function getSamplingSpatialWeight() {
+                const el = document.getElementById('sampling-spatial-weight');
+                if (!el) return null;
+                const parsed = parseFloat(el.value);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function getSmartSamplingConfig() {
+                const method = getSamplingMethod();
+                const cfg = { sampling_method: method };
+
+                if (method !== 'off') {
+                    const target = getSamplingTargetSize();
+                    if (target !== null) cfg.target_size = target;
+
+                    if (method === 'hybrid') {
+                        const w = getSamplingSpatialWeight();
+                        if (w !== null) cfg.spatial_weight = w;
+                    }
+                }
+
+                return cfg;
+            }
+
+            function updateSmartSamplingUI(method) {
+                const targetContainer = document.getElementById('sampling-target-container');
+                const hybridContainer = document.getElementById('sampling-hybrid-container');
+
+                if (targetContainer) targetContainer.style.display = (method === 'off') ? 'none' : 'flex';
+                if (hybridContainer) hybridContainer.style.display = (method === 'hybrid') ? 'flex' : 'none';
+            }
+
+            function updateKernelUI(kernelType) {
+                const descEl = document.getElementById('kernel-description');
+                const paramContainer = document.getElementById('kernel-param-container');
+                const paramLabel = document.getElementById('kernel-param-label');
+                const paramEl = document.getElementById('kernel-param');
+
+                if (paramContainer && paramLabel && paramEl) {
+                    const lastKernelType = paramEl.dataset.lastKernelType;
+                    if (kernelType === 'generalized') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'p';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.5';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else if (kernelType === 'student_t') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'ν';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else if (kernelType === 'rational_quadratic') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'α';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else {
+                        paramContainer.style.display = 'none';
+                    }
+                }
+
+                if (!descEl) return;
+                if (kernelType === 'gaussian') {
+                    descEl.innerHTML = '<strong>Gaussian:</strong> K = exp(-d² / (2σ²)) - Squared distance decay, standard RBF kernel formula';
+                } else if (kernelType === 'generalized') {
+                    descEl.innerHTML = '<strong>Generalized:</strong> K = exp(-(d^p) / (2σ²)) - Generalized exponential family (tune p)';
+                } else if (kernelType === 'student_t') {
+                    descEl.innerHTML = '<strong>Student-t:</strong> K = (1 + d²/(νσ²))^(-(ν+1)/2) - Heavy-tailed kernel (tune ν)';
+                } else if (kernelType === 'rational_quadratic') {
+                    descEl.innerHTML = '<strong>Rational quadratic:</strong> K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture (tune α)';
+                } else {
+                    descEl.innerHTML = '<strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data';
+                }
+            }
+
+            // Initialize kernel UI
+            updateKernelUI(getSelectedKernelType());
+
+            // SmartK strategy listeners (if present)
+            document.querySelectorAll('input[name="k_adaptation_strategy"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    updateSmartKUI(e.target.value);
+                });
+            });
+
+            // Initialize SmartK UI
+            updateSmartKUI(getKAdaptationStrategy());
+
+            // Smart sampling listeners (if present)
+            document.querySelectorAll('input[name="sampling_method"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    updateSmartSamplingUI(e.target.value);
+                });
+            });
+
+            // Initialize smart sampling UI
+            updateSmartSamplingUI(getSamplingMethod());
+
             runButton.addEventListener('click', () => {
                 runButton.disabled = true;
                 runButton.textContent = 'Running Cortical Analysis...';
-                
+
                 // Get form data
                 const selectedDataset = document.querySelector('input[name="dataset"]:checked').value;
                 const nCells = document.getElementById('n_cells').value;
                 const nLayers = document.getElementById('n_layers').value;
-                
+                const kernelCfg = getKernelConfig();
+                const smartKCfg = getSmartKConfig();
+                const smartSamplingCfg = getSmartSamplingConfig();
+
                 const selectedAlgorithms = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
                     .filter(cb => cb.id.startsWith('algo_'))
                     .map(cb => cb.id.replace('algo_', ''));
@@ -242,10 +540,10 @@
                 
                 // Initialize progress log
                 lastMessageCount = 0;
-                logMessage('🧠 Starting mouse brain cortical layers analysis...');
-                logMessage(`📊 Dataset: ${selectedDataset} (${nCells} cells, ${nLayers} layers)`);
-                logMessage(`⚙️  Algorithms: ${selectedAlgorithms.join(', ')}`);
-                logMessage(`📈 Metrics: ${selectedMetrics.join(', ')}`);
+                logMessage('Starting mouse brain cortical layers analysis...');
+                logMessage(`Dataset: ${selectedDataset} (${nCells} cells, ${nLayers} layers)`);
+                logMessage(`Algorithms: ${selectedAlgorithms.join(', ')}`);
+                logMessage(`Metrics: ${selectedMetrics.join(', ')}`);
                 
                 // Start analysis
                 fetch('/api/mouse_brain_cortical', {
@@ -258,13 +556,16 @@
                         n_cells: parseInt(nCells),
                         n_layers: parseInt(nLayers),
                         algorithms: selectedAlgorithms,
-                        metrics: selectedMetrics
+                        metrics: selectedMetrics,
+                        ...kernelCfg,
+                        ...smartKCfg,
+                        ...smartSamplingCfg
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        logMessage('✅ Analysis completed successfully');
+                        logMessage('Analysis completed successfully');
                         
                         // Create results display
                         const analysisResults = document.createElement('div');
@@ -311,7 +612,7 @@
                                     resultsHTML += `
                                         <tr class="${rowClass}">
                                             <td><strong>${algorithm}</strong></td>
-                                            <td>${sgp}${algorithm === 'NormalizedDynamics' ? ' ⭐' : ''}</td>
+                                            <td>${sgp}</td>
                                             <td>${depth}</td>
                                             <td>${ordering}</td>
                                             <td>${runtime}</td>
@@ -341,7 +642,7 @@
                         resultsContainer.appendChild(analysisResults);
                         
                     } else {
-                        logMessage('❌ Analysis failed: ' + (data.error || 'Unknown error'));
+                        logMessage('Analysis failed: ' + (data.error || 'Unknown error'));
                         
                         resultsContainer.innerHTML = `
                             <div class="result-block">
@@ -353,7 +654,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    logMessage('❌ Network error: ' + error.message);
+                    logMessage('Network error: ' + error.message);
                     
                     resultsContainer.innerHTML = `
                         <div class="result-block">

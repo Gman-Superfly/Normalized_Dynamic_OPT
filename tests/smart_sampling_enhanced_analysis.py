@@ -46,7 +46,7 @@ try:
 except ImportError:
     from normalized_dynamics_optimized import NormalizedDynamicsOptimized
     SMART_K_AVAILABLE = False
-    print("⚠️  Smart K module not available, using standard optimized version")
+    print("Warning: Smart K module not available, using standard optimized version")
 
 # Check for optional dependencies
 try:
@@ -67,7 +67,7 @@ def create_large_synthetic_developmental_dataset(n_cells=12000, n_genes=2500, ra
     Create a large, realistic synthetic developmental dataset to demonstrate 
     the benefits of smart sampling.
     """
-    print(f"🧬 Generating large synthetic developmental dataset...")
+    print("Generating large synthetic developmental dataset...")
     print(f"   Target: {n_cells} cells × {n_genes} genes")
     
     np.random.seed(random_seed)
@@ -180,7 +180,7 @@ def create_large_synthetic_developmental_dataset(n_cells=12000, n_genes=2500, ra
     X += np.random.normal(0, 0.1, X.shape)
     X = np.maximum(X, 0.01)  # Ensure positive expression
     
-    print(f"   ✅ Generated dataset: {X.shape}")
+    print(f"   Generated dataset: {X.shape}")
     print(f"   Cell types: {np.unique(cell_types, return_counts=True)}")
     print(f"   Pseudotime range: {true_pseudotime.min():.3f} - {true_pseudotime.max():.3f}")
     
@@ -192,9 +192,17 @@ def create_large_synthetic_developmental_dataset(n_cells=12000, n_genes=2500, ra
         'description': 'Large synthetic developmental trajectory with realistic proportions'
     }
 
-def run_smart_sampling_analysis():
+def run_smart_sampling_analysis(
+    sampling_method: str | None = None,
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+):
     """
-    Comprehensive analysis demonstrating smart sampling + dynamic K benefits.
+    Run the smart sampling analysis.
+
+    This function supports two modes:
+    - If sampling_method is None, it runs the original multi-strategy comparison.
+    - If sampling_method is set, it runs a single sampling strategy (including "off"/"none").
     """
     print("="*80)
     print("SMART SAMPLING + DYNAMIC K ENHANCED ANALYSIS")
@@ -215,37 +223,75 @@ def run_smart_sampling_analysis():
     scaler = StandardScaler()
     X_full_scaled = scaler.fit_transform(X_full)
     
-    print(f"\n📊 Original dataset: {X_full_scaled.shape}")
+    print(f"\nOriginal dataset: {X_full_scaled.shape}")
     print(f"Cell type distribution: {dict(zip(*np.unique(cell_types_full, return_counts=True)))}")
     
-    # Define comprehensive sampling and algorithm strategies
-    sampling_configs = {
-        'Random_2000': {
-            'method': 'random',
-            'target_size': 2000,
-            'description': 'Random subsampling (baseline)'
-        },
-        'Expression_2000': {
-            'method': 'expression',
-            'target_size': 2000,
-            'description': 'Expression diversity sampling'
-        },
-        'Spatial_2000': {
-            'method': 'spatial',
-            'target_size': 2000,
-            'description': 'Spatial stratified sampling'
-        },
-        'Hybrid_2000': {
-            'method': 'hybrid',
-            'target_size': 2000,
-            'description': 'Hybrid spatial + expression sampling'
-        },
-        'Smart_3000': {
-            'method': 'hybrid',
-            'target_size': 3000,
-            'description': 'Larger smart sample for comparison'
+    # Define sampling configurations
+    allowed_methods = {'none', 'off', 'random', 'expression', 'spatial', 'hybrid'}
+    if sampling_method is not None:
+        assert isinstance(sampling_method, str), f"sampling_method must be str, got {type(sampling_method)}"
+        sampling_method_norm = sampling_method.strip().lower()
+        assert sampling_method_norm in allowed_methods, f"Unknown sampling_method: {sampling_method}"
+
+        if sampling_method_norm in {'off', 'none'}:
+            sampling_configs = {
+                'Off_full': {
+                    'method': 'none',
+                    'target_size': int(X_full_scaled.shape[0]),
+                    'description': 'No sampling (full dataset)'
+                }
+            }
+        else:
+            assert isinstance(target_size, int), f"target_size must be int, got {type(target_size)}"
+            assert target_size > 0, "target_size must be > 0"
+            assert target_size <= int(X_full_scaled.shape[0]), (
+                f"target_size ({target_size}) must be <= n_cells ({int(X_full_scaled.shape[0])})"
+            )
+            assert isinstance(spatial_weight, (int, float)), f"spatial_weight must be float, got {type(spatial_weight)}"
+            spatial_weight_f = float(spatial_weight)
+            assert 0.0 <= spatial_weight_f <= 1.0, "spatial_weight must be in [0, 1]"
+
+            pretty = sampling_method_norm.replace('_', ' ').title().replace(' ', '_')
+            cfg = {
+                'method': sampling_method_norm,
+                'target_size': int(target_size),
+                'description': f"{sampling_method_norm} sampling (user selected)"
+            }
+            if sampling_method_norm == 'hybrid':
+                cfg['spatial_weight'] = spatial_weight_f
+
+            sampling_configs = {
+                f'{pretty}_{int(target_size)}': cfg
+            }
+    else:
+        # Original multi-strategy comparison (default behaviour)
+        sampling_configs = {
+            'Random_2000': {
+                'method': 'random',
+                'target_size': 2000,
+                'description': 'Random subsampling (baseline)'
+            },
+            'Expression_2000': {
+                'method': 'expression',
+                'target_size': 2000,
+                'description': 'Expression diversity sampling'
+            },
+            'Spatial_2000': {
+                'method': 'spatial',
+                'target_size': 2000,
+                'description': 'Spatial stratified sampling'
+            },
+            'Hybrid_2000': {
+                'method': 'hybrid',
+                'target_size': 2000,
+                'description': 'Hybrid spatial + expression sampling'
+            },
+            'Smart_3000': {
+                'method': 'hybrid',
+                'target_size': 3000,
+                'description': 'Larger smart sample for comparison'
+            }
         }
-    }
     
     # Algorithm configurations
     algorithm_configs = {
@@ -298,33 +344,43 @@ def run_smart_sampling_analysis():
         print(f"Target size: {sampling_config['target_size']}")
         
         # Apply sampling
-        sampler = BiologicalSampler(
-            target_size=sampling_config['target_size'],
-            random_state=42
-        )
-        
-        if sampling_config['method'] == 'random':
-            indices = np.random.choice(
-                X_full.shape[0], 
-                sampling_config['target_size'], 
-                replace=False
+        if sampling_config['method'] == 'none':
+            indices = np.arange(X_full.shape[0], dtype=int)
+            sampling_time = 0.0
+        else:
+            sampler = BiologicalSampler(
+                target_size=sampling_config['target_size'],
+                random_state=42
             )
-            sampling_time = 0.1  # Minimal time for random sampling
-            
-        elif sampling_config['method'] == 'expression':
-            start_time = time.time()
-            indices = sampler.expression_diversity_sample(X_full_scaled)
-            sampling_time = time.time() - start_time
-            
-        elif sampling_config['method'] == 'spatial':
-            start_time = time.time()
-            indices = sampler.spatial_stratified_sample(X_full_scaled, spatial_coords_full)
-            sampling_time = time.time() - start_time
-            
-        elif sampling_config['method'] == 'hybrid':
-            start_time = time.time()
-            indices = sampler.hybrid_sample(X_full_scaled, spatial_coords_full)
-            sampling_time = time.time() - start_time
+
+            if sampling_config['method'] == 'random':
+                indices = np.random.choice(
+                    X_full.shape[0],
+                    sampling_config['target_size'],
+                    replace=False
+                )
+                sampling_time = 0.1  # Minimal time for random sampling
+
+            elif sampling_config['method'] == 'expression':
+                start_time = time.time()
+                indices = sampler.expression_diversity_sample(X_full_scaled)
+                sampling_time = time.time() - start_time
+
+            elif sampling_config['method'] == 'spatial':
+                start_time = time.time()
+                indices = sampler.spatial_stratified_sample(X_full_scaled, spatial_coords_full)
+                sampling_time = time.time() - start_time
+
+            elif sampling_config['method'] == 'hybrid':
+                start_time = time.time()
+                indices = sampler.hybrid_sample(
+                    X_full_scaled,
+                    spatial_coords_full,
+                    sampling_config.get('spatial_weight', 0.7),
+                )
+                sampling_time = time.time() - start_time
+            else:
+                raise ValueError(f"Unknown sampling config method: {sampling_config['method']}")
         
         # Create sampled dataset
         X_sampled = X_full_scaled[indices]
@@ -389,7 +445,7 @@ def run_smart_sampling_analysis():
                               f"range=[{np.min(k_info['k_history'])}-{np.max(k_info['k_history'])}]")
                 
             except Exception as e:
-                print(f"❌ Error with {alg_name}: {e}")
+                print(f"Error with {alg_name}: {e}")
                 sampling_results[alg_name] = {
                     'runtime': None,
                     'metrics': {},
@@ -410,7 +466,7 @@ def run_smart_sampling_analysis():
         )
         print("🔧 Debug: Visualization generation completed")
     except Exception as e:
-        print(f"⚠️ Warning: Visualization generation failed: {e}")
+        print(f"Warning: Visualization generation failed: {e}")
         # Continue without visualizations
     
     print("🔧 Debug: Starting comprehensive analysis printing...")
@@ -420,7 +476,7 @@ def run_smart_sampling_analysis():
         print_comprehensive_analysis(all_results, all_sampling_info, sampling_configs)
         print("🔧 Debug: Analysis printing completed")
     except Exception as e:
-        print(f"⚠️ Warning: Analysis printing failed: {e}")
+        print(f"Warning: Analysis printing failed: {e}")
     
     print("🔧 Debug: Returning results...")
     return all_results, all_embeddings, all_sampling_info
@@ -543,7 +599,7 @@ def create_comprehensive_visualization(all_results, all_embeddings, all_sampling
     os.makedirs(results_dir, exist_ok=True)
     save_path = os.path.join(results_dir, f'smart_sampling_enhanced_analysis_{timestamp}.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"\n📊 Comprehensive visualization saved: {save_path}")
+    print(f"\nComprehensive visualization saved: {save_path}")
     plt.close('all')  # Close all figures to prevent memory issues
     
     # Create performance comparison chart
@@ -567,7 +623,7 @@ def create_performance_chart(all_results, all_sampling_info, timestamp):
                 })
     
     if not data:
-        print("⚠️  No data available for performance chart")
+        print("Warning: No data available for performance chart")
         return
     
     df = pl.DataFrame(data)
@@ -663,7 +719,7 @@ def create_performance_chart(all_results, all_sampling_info, timestamp):
     results_dir = os.path.join(project_root, 'static', 'results')
     save_path = os.path.join(results_dir, f'smart_sampling_performance_chart_{timestamp}.png')
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"📈 Performance chart saved: {save_path}")
+    print(f"Performance chart saved: {save_path}")
     plt.close('all')  # Close all figures to prevent memory issues
 
 def print_comprehensive_analysis(all_results, all_sampling_info, sampling_configs):
@@ -683,7 +739,7 @@ def print_comprehensive_analysis(all_results, all_sampling_info, sampling_config
                 normdyn_results[sampling_name][alg_name] = result
     
     if normdyn_results:
-        print("\n📊 NORMALIZEDDYNAMICS PERFORMANCE BY SAMPLING STRATEGY:")
+        print("\nNORMALIZEDDYNAMICS PERFORMANCE BY SAMPLING STRATEGY:")
         print("-" * 70)
         print(f"{'Strategy':<20} {'K Type':<12} {'Size':<6} {'Traj':<8} {'Local':<8} {'Time':<8}")
         print("-" * 70)
@@ -700,7 +756,7 @@ def print_comprehensive_analysis(all_results, all_sampling_info, sampling_config
                       f"{traj:<8.3f} {local:<8.3f} {runtime:<8.1f}")
     
     # Smart sampling benefits analysis
-    print(f"\n🎯 SMART SAMPLING BENEFITS:")
+    print("\nSMART SAMPLING BENEFITS:")
     if 'Random_2000' in all_sampling_info and any('Smart' in s or 'Hybrid' in s for s in all_sampling_info.keys()):
         random_time = all_sampling_info['Random_2000']['sampling_time']
         random_preservation = all_sampling_info['Random_2000']['cell_type_preservation']
@@ -721,7 +777,7 @@ def print_comprehensive_analysis(all_results, all_sampling_info, sampling_config
     
     # Dynamic K benefits analysis
     if SMART_K_AVAILABLE:
-        print(f"\n🧠 DYNAMIC K ADAPTATION BENEFITS:")
+        print("\nDYNAMIC K ADAPTATION BENEFITS:")
         
         # Compare Fixed K vs Smart K performance
         fixed_k_results = {}
@@ -745,16 +801,16 @@ def print_comprehensive_analysis(all_results, all_sampling_info, sampling_config
                 print(f"  - Trajectory smoothness improvement: {traj_improvement:+.3f}")
                 print(f"  - Local structure improvement: {local_improvement:+.3f}")
     
-    print(f"\n✅ SCIENTIFIC INTEGRITY CONFIRMATION:")
-    print("✅ All algorithms tested on identical sampled datasets")
-    print("✅ Sampling methodology fully documented and transparent")
-    print("✅ Dynamic K adaptation based on dataset characteristics")
-    print("✅ Improvements from better algorithm optimization, not unfair advantages")
-    print("✅ Smart sampling preserves biological structure and diversity")
-    print("✅ Results demonstrate true algorithmic potential on well-curated data")
+    print("\nSCIENTIFIC INTEGRITY CONFIRMATION:")
+    print("All algorithms tested on identical sampled datasets")
+    print("Sampling methodology documented and transparent")
+    print("Dynamic K adaptation based on dataset characteristics")
+    print("Improvements from better algorithm optimization, not unfair advantages")
+    print("Smart sampling preserves biological structure and diversity")
+    print("Results demonstrate algorithm behavior on curated data")
 
 if __name__ == "__main__":
-    print("🚀 Starting Smart Sampling Enhanced Analysis...")
+    print("Starting Smart Sampling Enhanced Analysis...")
     print("This analysis demonstrates how intelligent sampling + dynamic K")
     print("optimization unlocks NormalizedDynamics' true potential!")
     
@@ -768,11 +824,11 @@ if __name__ == "__main__":
     print("="*80)
     print(f"Total analysis time: {total_time:.1f}s")
     print(f"\nKey findings:")
-    print("1. 🧬 Smart sampling preserves biological structure better than random sampling")
-    print("2. 🧠 Dynamic K adaptation optimizes performance for each dataset size")
-    print("3. 📈 Combined approach shows significant performance improvements")
-    print("4. ✅ All improvements are scientifically valid and transparently documented")
-    print("5. 🎯 Algorithm performs optimally on intelligently curated datasets")
+    print("1. Smart sampling preserves biological structure better than random sampling")
+    print("2. Dynamic K adaptation adapts to dataset size")
+    print("3. Combined approach improves some metrics")
+    print("4. Improvements are documented")
+    print("5. Algorithm performance depends on the sampling strategy")
     
-    print(f"\n🔬 This shows that NormalizedDynamics works well")
+    print("\nThis shows that NormalizedDynamics can work well")
     print(f"when combined with intelligent data curation and adaptive optimization!") 

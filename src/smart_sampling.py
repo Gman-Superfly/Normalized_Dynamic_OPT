@@ -11,6 +11,7 @@ import polars as pl
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import StandardScaler
 import time
+from typing import Optional
 
 class BiologicalSampler:
     """
@@ -269,6 +270,81 @@ def smart_sample_visium_data(adata, target_size=15000, method='hybrid', spatial_
     print(f"   Size reduction: {adata.shape[0]:,} → {len(sampled_indices):,} ({len(sampled_indices)/adata.shape[0]*100:.1f}%)")
     
     return adata_sampled, sample_info
+
+
+def select_sample_indices(
+    data: np.ndarray,
+    method: str,
+    target_size: int,
+    spatial_coords: Optional[np.ndarray] = None,
+    spatial_weight: float = 0.7,
+    random_state: int = 42,
+) -> np.ndarray:
+    """Select sample indices according to a sampling method.
+
+    Args:
+        data: Data matrix (n_samples, n_features).
+        method: 'off'/'none'/'random'/'expression'/'spatial'/'hybrid'.
+        target_size: Desired number of samples (ignored for 'off'/'none').
+        spatial_coords: Optional spatial coordinates (n_samples, 2) for spatial/hybrid.
+        spatial_weight: For hybrid method, weight of spatial vs expression sampling.
+        random_state: Random seed for reproducibility.
+
+    Returns:
+        Indices into the original data array.
+
+    Raises:
+        ValueError: If method is unknown or inputs are invalid.
+    """
+    assert data is not None, "data is required"
+    assert isinstance(data, np.ndarray), f"Expected data as np.ndarray, got {type(data)}"
+    assert data.ndim == 2, f"Expected 2D data, got shape {data.shape}"
+    assert data.shape[0] > 0, "Empty dataset"
+
+    assert isinstance(method, str), f"method must be str, got {type(method)}"
+    method_norm = method.strip().lower()
+
+    n_samples = int(data.shape[0])
+    if method_norm in {"off", "none"}:
+        return np.arange(n_samples, dtype=int)
+
+    assert isinstance(target_size, int), f"target_size must be int, got {type(target_size)}"
+    if target_size <= 0:
+        raise ValueError(f"target_size must be > 0, got {target_size}")
+
+    if target_size >= n_samples:
+        return np.arange(n_samples, dtype=int)
+
+    if method_norm == "random":
+        rng = np.random.default_rng(seed=random_state)
+        return rng.choice(n_samples, size=target_size, replace=False).astype(int)
+
+    # For expression/spatial/hybrid we reuse BiologicalSampler.
+    sampler = BiologicalSampler(target_size=target_size, random_state=random_state)
+
+    if method_norm == "expression":
+        return sampler.expression_diversity_sample(data).astype(int)
+
+    if method_norm == "spatial":
+        if spatial_coords is None:
+            # Fallback for datasets without spatial coordinates.
+            return sampler.expression_diversity_sample(data).astype(int)
+        assert isinstance(spatial_coords, np.ndarray), f"spatial_coords must be np.ndarray, got {type(spatial_coords)}"
+        assert spatial_coords.shape[0] == n_samples, "spatial_coords must match data rows"
+        return sampler.spatial_stratified_sample(data, spatial_coords).astype(int)
+
+    if method_norm == "hybrid":
+        if spatial_coords is None:
+            return sampler.expression_diversity_sample(data).astype(int)
+        assert isinstance(spatial_coords, np.ndarray), f"spatial_coords must be np.ndarray, got {type(spatial_coords)}"
+        assert spatial_coords.shape[0] == n_samples, "spatial_coords must match data rows"
+        assert isinstance(spatial_weight, (int, float)), f"spatial_weight must be float, got {type(spatial_weight)}"
+        spatial_weight_f = float(spatial_weight)
+        if not (0.0 <= spatial_weight_f <= 1.0):
+            raise ValueError(f"spatial_weight must be in [0, 1], got {spatial_weight}")
+        return sampler.hybrid_sample(data, spatial_coords, spatial_weight=spatial_weight_f).astype(int)
+
+    raise ValueError(f"Unknown sampling method: {method}")
 
 # Example usage and testing
 if __name__ == "__main__":

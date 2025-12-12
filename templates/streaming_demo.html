@@ -126,14 +126,14 @@
     
     <!-- Navigation -->
     <nav>
-        <a href="/">🍷 Wine Analysis</a>
-        <a href="/gaia-analysis">📊 GAIA Analysis</a>
-        <a href="/streaming-demo" class="active">🚀 Streaming Demo</a>
-        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
-        <a href="/biological-metrics">📈 Biological Metrics</a>
-        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
-        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
-        <a href="/smart-sampling">🧠 Smart Sampling</a>
+        <a href="/">Wine Analysis</a>
+        <a href="/gaia-analysis">GAIA Analysis</a>
+        <a href="/streaming-demo" class="active">Streaming Demo</a>
+        <a href="/pancreas-analysis">Single-Cell Analysis</a>
+        <a href="/biological-metrics">Biological Metrics</a>
+        <a href="/synthetic-developmental">Synthetic Data</a>
+        <a href="/mouse-brain-cortical">Brain Cortical</a>
+        <a href="/smart-sampling">Smart Sampling</a>
     </nav>
     
     <main>
@@ -182,22 +182,70 @@
         <!-- Controls -->
         <div class="controls" style="text-align: center;">
             <h3>Stream Controls</h3>
+            
+            <!-- Kernel Type Selection -->
+            <div style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <h4 style="margin-bottom: 10px;">Kernel Type</h4>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Select the kernel function for distance weighting
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="kernel_type" value="exponential" checked id="kernel-exponential">
+                        <span><strong>Exponential</strong> (default)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="kernel_type" value="gaussian" id="kernel-gaussian">
+                        <span><strong>Gaussian</strong> (standard RBF)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="kernel_type" value="generalized" id="kernel-generalized">
+                        <span><strong>Generalized</strong> (p)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="kernel_type" value="student_t" id="kernel-student-t">
+                        <span><strong>Student-t</strong> (ν)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="kernel_type" value="rational_quadratic" id="kernel-rational-quadratic">
+                        <span><strong>Rational quadratic</strong> (α)</span>
+                    </label>
+                </div>
+                <div id="kernel-param-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label id="kernel-param-label" for="kernel-param" style="font-size: 12px; color: var(--border-color);">p</label>
+                    <input id="kernel-param" type="number" min="0.1" step="0.1" value="1.5" style="width: 100px;">
+                </div>
+                <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <label for="kernel-beta" style="font-size: 12px; color: var(--border-color);">Slope β</label>
+                    <input id="kernel-beta" type="number" min="0.1" step="0.1" value="1.0" style="width: 100px;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input id="learn-kernel-beta" type="checkbox">
+                        <span style="font-size: 12px;">Auto-tune β</span>
+                    </label>
+                </div>
+                <div style="margin-top: 10px; font-size: 11px; color: var(--border-color);">
+                    <div id="kernel-description">
+                        <strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data
+                    </div>
+                </div>
+            </div>
+            
             <button id="start-stream">Start Stream</button>
             <button id="stop-stream" disabled>Stop Stream</button>
             <button id="reset">Reset</button>
             
             <div style="margin-top: 30px;">
-                <h3>🚨 Anomaly Injection</h3>
+                <h3>Anomaly Injection</h3>
                 <p style="font-size: 14px; color: var(--border-color); margin-bottom: 15px;">
                     Simulate real-world events and see how the embedding responds in real-time
                 </p>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                    <button class="anomaly-btn" data-anomaly="spike">📈 Sensor Spike</button>
+                    <button class="anomaly-btn" data-anomaly="spike">Sensor Spike</button>
                     <button class="anomaly-btn" data-anomaly="drift">📉 Gradual Drift</button>
-                    <button class="anomaly-btn" data-anomaly="failure">❌ Sensor Failure</button>
+                    <button class="anomaly-btn" data-anomaly="failure">Sensor Failure</button>
                     <button class="anomaly-btn" data-anomaly="fire_alarm">🔥 Fire Alarm</button>
-                    <button class="anomaly-btn" data-anomaly="equipment_failure">⚙️ Equipment Failure</button>
+                    <button class="anomaly-btn" data-anomaly="equipment_failure">Equipment Failure</button>
                     <button class="anomaly-btn" data-anomaly="network_interference">📡 Network Issues</button>
                 </div>
                 
@@ -214,6 +262,14 @@
                 <p><strong>Algorithm:</strong> NormalizedDynamics with real-time incremental updates</p>
                 <p><strong>Data:</strong> 6 simulated IoT sensors (temperature, humidity, pressure, CO₂, light, vibration)</p>
                 <p><strong>Update Rate:</strong> ~10 points per second</p>
+                <p><strong>Kernel Options:</strong></p>
+                <ul style="text-align: left; margin-left: 40px; font-size: 12px;">
+                    <li><strong>Exponential</strong>: K = exp(-d / (2σ²)) - Linear distance decay. Works well empirically on biological trajectory data.</li>
+                    <li><strong>Gaussian</strong>: K = exp(-d² / (2σ²)) - Squared distance decay. Standard RBF kernel formulation.</li>
+                    <li><strong>Generalized</strong>: K = exp(-(d^p) / (2σ²)) - Generalized exponential family, tune p.</li>
+                    <li><strong>Student-t</strong>: K = (1 + d²/(νσ²))^(-(ν+1)/2) - Heavy-tailed kernel, tune ν.</li>
+                    <li><strong>Rational quadratic</strong>: K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture, tune α.</li>
+                </ul>
             </div>
         </div>
     </main>
@@ -264,6 +320,87 @@
                 });
                 
                 document.getElementById('clear-anomalies').onclick = () => this.clearAnomalies();
+                
+                // Kernel type selection
+                document.querySelectorAll('input[name="kernel_type"]').forEach(radio => {
+                    radio.onchange = (e) => this.updateKernelUI(e.target.value);
+                });
+
+                // Initialize kernel UI
+                this.updateKernelUI(this.getSelectedKernelType());
+            }
+            
+            getSelectedKernelType() {
+                const selected = document.querySelector('input[name="kernel_type"]:checked');
+                return selected ? selected.value : 'exponential';
+            }
+
+            getKernelParam() {
+                const paramEl = document.getElementById('kernel-param');
+                if (!paramEl) return null;
+                const parsed = parseFloat(paramEl.value);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            getKernelConfig() {
+                const kernelType = this.getSelectedKernelType();
+                const kernelParam = this.getKernelParam();
+
+                const cfg = { kernel_type: kernelType };
+                if (kernelType === 'generalized' && kernelParam !== null) cfg.kernel_p = kernelParam;
+                if (kernelType === 'student_t' && kernelParam !== null) cfg.kernel_nu = kernelParam;
+                if (kernelType === 'rational_quadratic' && kernelParam !== null) cfg.kernel_alpha = kernelParam;
+
+                const betaEl = document.getElementById('kernel-beta');
+                if (betaEl) {
+                    const betaParsed = parseFloat(betaEl.value);
+                    if (Number.isFinite(betaParsed)) cfg.kernel_beta = betaParsed;
+                }
+                const autoEl = document.getElementById('learn-kernel-beta');
+                if (autoEl) cfg.learn_kernel_beta = Boolean(autoEl.checked);
+                return cfg;
+            }
+
+            updateKernelUI(kernelType) {
+                const descEl = document.getElementById('kernel-description');
+                const paramContainer = document.getElementById('kernel-param-container');
+                const paramLabel = document.getElementById('kernel-param-label');
+                const paramEl = document.getElementById('kernel-param');
+
+                if (paramContainer && paramLabel && paramEl) {
+                    const lastKernelType = paramEl.dataset.lastKernelType;
+                    if (kernelType === 'generalized') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'p';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.5';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else if (kernelType === 'student_t') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'ν';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else if (kernelType === 'rational_quadratic') {
+                        paramContainer.style.display = 'flex';
+                        paramLabel.textContent = 'α';
+                        if (lastKernelType !== kernelType) paramEl.value = '1.0';
+                        paramEl.dataset.lastKernelType = kernelType;
+                    } else {
+                        paramContainer.style.display = 'none';
+                    }
+                }
+
+                if (!descEl) return;
+                if (kernelType === 'gaussian') {
+                    descEl.innerHTML = '<strong>Gaussian:</strong> K = exp(-d² / (2σ²)) - Squared distance decay, standard RBF kernel formula';
+                } else if (kernelType === 'generalized') {
+                    descEl.innerHTML = '<strong>Generalized:</strong> K = exp(-(d^p) / (2σ²)) - Generalized exponential family (tune p)';
+                } else if (kernelType === 'student_t') {
+                    descEl.innerHTML = '<strong>Student-t:</strong> K = (1 + d²/(νσ²))^(-(ν+1)/2) - Heavy-tailed kernel (tune ν)';
+                } else if (kernelType === 'rational_quadratic') {
+                    descEl.innerHTML = '<strong>Rational quadratic:</strong> K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture (tune α)';
+                } else {
+                    descEl.innerHTML = '<strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data';
+                }
             }
             
             initializePlot() {
@@ -297,8 +434,26 @@
             startStreaming() {
                 if (this.isStreaming) return;
                 
-                this.eventSource = new EventSource('/api/streaming-data');
+                // Get selected kernel config and include in API request
+                const kernelCfg = this.getKernelConfig();
+                const params = new URLSearchParams();
+                params.set('kernel_type', kernelCfg.kernel_type);
+                if (kernelCfg.kernel_p !== undefined) params.set('kernel_p', String(kernelCfg.kernel_p));
+                if (kernelCfg.kernel_nu !== undefined) params.set('kernel_nu', String(kernelCfg.kernel_nu));
+                if (kernelCfg.kernel_alpha !== undefined) params.set('kernel_alpha', String(kernelCfg.kernel_alpha));
+                this.eventSource = new EventSource(`/api/streaming-data?${params.toString()}`);
                 this.startTime = Date.now();
+                
+                // Disable kernel type selection while streaming
+                document.querySelectorAll('input[name="kernel_type"]').forEach(radio => {
+                    radio.disabled = true;
+                });
+                const paramEl = document.getElementById('kernel-param');
+                if (paramEl) paramEl.disabled = true;
+                const betaEl = document.getElementById('kernel-beta');
+                if (betaEl) betaEl.disabled = true;
+                const autoEl = document.getElementById('learn-kernel-beta');
+                if (autoEl) autoEl.disabled = true;
                 
                 this.eventSource.onmessage = (event) => {
                     try {
@@ -338,6 +493,17 @@
                 this.isStreaming = false;
                 this.updateButtons();
                 this.updateStatus('Stopped');
+                
+                // Re-enable kernel type selection
+                document.querySelectorAll('input[name="kernel_type"]').forEach(radio => {
+                    radio.disabled = false;
+                });
+                const paramEl = document.getElementById('kernel-param');
+                if (paramEl) paramEl.disabled = false;
+                const betaEl = document.getElementById('kernel-beta');
+                if (betaEl) betaEl.disabled = false;
+                const autoEl = document.getElementById('learn-kernel-beta');
+                if (autoEl) autoEl.disabled = false;
             }
             
             reset() {

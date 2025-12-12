@@ -17,10 +17,32 @@ sys.path.insert(0, project_root)
 
 from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized, compute_metrics_optimized
 
-def run_and_visualize_gaia(data_path="data/gaia_data_500.csv", results_dir="static/results"):
+def run_and_visualize_gaia(
+    data_path="data/gaia_data_500.csv",
+    results_dir="static/results",
+    kernel_type='exponential',
+    kernel_p=1.5,
+    kernel_nu=1.0,
+    kernel_alpha=1.0,
+    kernel_beta=1.0,
+    learn_kernel_beta: bool = False,
+    k_adaptation_strategy: str = 'off',
+    k_base: int = 20,
+    sampling_method: str = 'off',
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+):
     """
     Refactored analysis logic that can be imported and called from another script.
-    
+
+    Args:
+        data_path: Path to the GAIA data file
+        results_dir: Directory to save results
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
+
     Returns:
         - Path to the saved plot.
         - A dictionary containing the execution times for each model.
@@ -50,14 +72,56 @@ def run_and_visualize_gaia(data_path="data/gaia_data_500.csv", results_dir="stat
     color_val = df['bp_rp'].to_numpy()  # Keep bp_rp for coloring the plot
     print(f"Data loaded successfully. Shape: {X.shape} (5D: position + photometry)")
 
+    # Optional smart sampling (GAIA has no spatial coords, spatial/hybrid fall back to expression)
+    if sampling_method != 'off':
+        from src.smart_sampling import select_sample_indices
+        indices = select_sample_indices(
+            data=X,
+            method=str(sampling_method),
+            target_size=int(target_size),
+            spatial_coords=None,
+            spatial_weight=float(spatial_weight),
+            random_state=random_seed,
+        )
+        X = X[indices]
+        color_val = color_val[indices]
+        print(f"Smart sampling applied: method={sampling_method}, final shape={X.shape}")
+
     # --- 2. Model Initialization ---
     print("Initializing models...")
-    models = {
-        'NormalizedDynamics': NormalizedDynamicsOptimized(
+    # Select algorithm variant based on k_adaptation_strategy
+    if k_adaptation_strategy != 'off':
+        from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+        k_base_value = int(k_base) if k_adaptation_strategy == 'fixed' else None
+        normdyn_model = NormalizedDynamicsSmartK(
+            dim=2,
+            k_base=k_base_value,
+            max_iter=50,
+            adaptive_params=True,
+            device=device,
+            k_adaptation_strategy=k_adaptation_strategy,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+    else:
+        normdyn_model = NormalizedDynamicsOptimized(
             dim=2,
             k=20,
-            device=device  # Offload computation to GPU if available
-        ),
+            device=device,  # Offload computation to GPU if available
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+
+    models = {
+        'NormalizedDynamics': normdyn_model,
         'UMAP': UMAP(
             n_neighbors=15,  # Standard default
             min_dist=0.1,    # Standard default

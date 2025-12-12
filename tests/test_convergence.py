@@ -535,9 +535,9 @@ class TestNormalizedDynamicsConvergence(unittest.TestCase):
         print(f"   ✓ Hit upper bound (2.0): {hit_upper_bound}")
         
         if hit_lower_bound:
-            print("   ⚠️  Alpha hit lower bound - error signal may be too strong")
+            print("   Warning: Alpha hit lower bound, error signal may be too strong")
         if hit_upper_bound:
-            print("   ⚠️  Alpha hit upper bound - error signal may be too strong")
+            print("   Warning: Alpha hit upper bound, error signal may be too strong")
         
         # Test should pass but warn about bounds hitting
         self.assertTrue(len(alpha_values) > 0, "Should have alpha history")
@@ -546,8 +546,8 @@ class TestNormalizedDynamicsConvergence(unittest.TestCase):
         bound_hit_ratio = sum(abs(a - 0.01) < 1e-4 or abs(a - 2.0) < 1e-4 for a in alpha_values) / len(alpha_values)
         
         if bound_hit_ratio > 0.3:
-            print(f"   ⚠️  Warning: {bound_hit_ratio:.1%} of iterations hit bounds")
-            print("   ⚠️  Consider adjusting eta or target_local_structure")
+            print(f"   Warning: {bound_hit_ratio:.1%} of iterations hit bounds")
+            print("   Consider adjusting eta or target_local_structure")
         
     def test_noise_scale_convergence_effects(self):
         """Test how noise_scale affects convergence behavior."""
@@ -619,9 +619,9 @@ if __name__ == '__main__':
     
     print("\n" + "="*70)
     if result.wasSuccessful():
-        print("✅ ALL CONVERGENCE TESTS PASSED!")
+        print("ALL CONVERGENCE TESTS PASSED")
     else:
-        print("❌ SOME CONVERGENCE TESTS FAILED!")
+        print("SOME CONVERGENCE TESTS FAILED")
         print(f"Failures: {len(result.failures)}")
         print(f"Errors: {len(result.errors)}")
     

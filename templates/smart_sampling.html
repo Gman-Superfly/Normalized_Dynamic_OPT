@@ -14,14 +14,14 @@
     
     <!-- Navigation -->
     <nav>
-        <a href="/">🍷 Wine Analysis</a>
-        <a href="/gaia-analysis">📊 GAIA Analysis</a>
-        <a href="/streaming-demo">🚀 Streaming Demo</a>
-        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
-        <a href="/biological-metrics">📈 Biological Metrics</a>
-        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
-        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
-        <a href="/smart-sampling" class="active">🧠 Smart Sampling</a>
+        <a href="/">Wine Analysis</a>
+        <a href="/gaia-analysis">GAIA Analysis</a>
+        <a href="/streaming-demo">Streaming Demo</a>
+        <a href="/pancreas-analysis">Single-Cell Analysis</a>
+        <a href="/biological-metrics">Biological Metrics</a>
+        <a href="/synthetic-developmental">Synthetic Data</a>
+        <a href="/mouse-brain-cortical">Brain Cortical</a>
+        <a href="/smart-sampling" class="active">Smart Sampling</a>
     </nav>
 
     <main>
@@ -33,7 +33,7 @@
         <!-- Quick Test Section -->
         <div class="controls">
             <fieldset>
-                <legend>🚀 Quick Test (Terminal Output)</legend>
+                <legend>Quick test (Terminal Output)</legend>
                                     <p>This runs the exact same test you see in the terminal: <code>python src/test_smart_sampling_quick.py</code></p>
                 <button id="run-quick-test-btn">Run Quick Test</button>
             </fieldset>
@@ -50,8 +50,48 @@
         <!-- Full Analysis Section -->
         <div class="controls">
             <fieldset>
-                <legend>📊 Full Smart Sampling Analysis</legend>
+                <legend>Full Smart Sampling Analysis</legend>
                 <p>Complete analysis with visualizations (may take longer).</p>
+                
+                <div style="margin-top: 15px;">
+                    <h4 style="margin-bottom: 10px;">Sampling strategy</h4>
+                    <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                        Choose how the dataset is downsampled before analysis. Off uses the full dataset.
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="sampling_method" value="off" checked>
+                            <span><strong>Off</strong> (default)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="sampling_method" value="random">
+                            <span><strong>Random</strong></span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="sampling_method" value="expression">
+                            <span><strong>Expression</strong></span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="sampling_method" value="spatial">
+                            <span><strong>Spatial</strong></span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="sampling_method" value="hybrid">
+                            <span><strong>Hybrid</strong></span>
+                        </label>
+                    </div>
+
+                    <div id="sampling-target-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                        <label for="sampling-target-size" style="font-size: 12px; color: var(--border-color);">Target size</label>
+                        <input id="sampling-target-size" type="number" min="100" step="100" value="2000" style="width: 120px;">
+                    </div>
+
+                    <div id="sampling-hybrid-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                        <label for="sampling-spatial-weight" style="font-size: 12px; color: var(--border-color);">Hybrid spatial weight</label>
+                        <input id="sampling-spatial-weight" type="number" min="0" max="1" step="0.05" value="0.7" style="width: 120px;">
+                    </div>
+                </div>
+
                 <button id="run-full-analysis-btn">Run Full Analysis</button>
             </fieldset>
         </div>
@@ -158,32 +198,107 @@
             });
         });
 
-        // Full analysis functionality (keeping existing)
+        function getSamplingMethod() {
+            const selected = document.querySelector('input[name="sampling_method"]:checked');
+            return selected ? selected.value : 'off';
+        }
+
+        function getSamplingConfig() {
+            const method = getSamplingMethod();
+            const cfg = { sampling_method: method };
+
+            if (method !== 'off') {
+                const targetEl = document.getElementById('sampling-target-size');
+                const parsed = targetEl ? parseInt(targetEl.value, 10) : NaN;
+                if (Number.isFinite(parsed)) cfg.target_size = parsed;
+
+                if (method === 'hybrid') {
+                    const wEl = document.getElementById('sampling-spatial-weight');
+                    const wParsed = wEl ? parseFloat(wEl.value) : NaN;
+                    if (Number.isFinite(wParsed)) cfg.spatial_weight = wParsed;
+                }
+            }
+
+            return cfg;
+        }
+
+        function updateSamplingUI(method) {
+            const targetContainer = document.getElementById('sampling-target-container');
+            const hybridContainer = document.getElementById('sampling-hybrid-container');
+            if (targetContainer) targetContainer.style.display = (method === 'off') ? 'none' : 'flex';
+            if (hybridContainer) hybridContainer.style.display = (method === 'hybrid') ? 'flex' : 'none';
+        }
+
+        document.querySelectorAll('input[name="sampling_method"]').forEach(radio => {
+            radio.addEventListener('change', (e) => updateSamplingUI(e.target.value));
+        });
+
+        updateSamplingUI(getSamplingMethod());
+
+        // Full analysis functionality (configured run)
         document.getElementById('run-full-analysis-btn').addEventListener('click', function() {
             const btn = this;
             const loadingIndicator = document.getElementById('loading-indicator');
             const resultsContainer = document.getElementById('results-container');
+            const terminalOutput = document.getElementById('terminal-output');
+            const terminalContent = document.getElementById('terminal-content');
             
             btn.disabled = true;
             btn.textContent = 'Running Analysis...';
             loadingIndicator.style.display = 'block';
             resultsContainer.innerHTML = '';
+            terminalOutput.style.display = 'block';
+            terminalContent.textContent = '';
+            lastMessageCount = 0;
+
+            const samplingCfg = getSamplingConfig();
+            logMessage('[ROCKET] Starting smart sampling full analysis...');
+            logMessage(`Sampling method: ${samplingCfg.sampling_method}`);
+            if (samplingCfg.target_size) logMessage(`Target size: ${samplingCfg.target_size}`);
+            if (samplingCfg.spatial_weight !== undefined) logMessage(`Hybrid spatial weight: ${samplingCfg.spatial_weight}`);
+
+            const progressInterval = setInterval(() => {
+                fetch('/api/smart_sampling/progress')
+                    .then(response => response.json())
+                    .then(progressData => {
+                        if (progressData.status === 'running') {
+                            updateProgressLog(progressData.messages);
+                        } else if (progressData.status === 'completed' || progressData.status === 'error') {
+                            clearInterval(progressInterval);
+                            if (progressData.status === 'completed') {
+                                logMessage('[CHECK] Analysis completed successfully');
+                            } else {
+                                logMessage('[ERROR] Analysis failed: ' + progressData.current_message);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Progress polling error:', error);
+                    });
+            }, 1000);
             
-            fetch('/api/smart_sampling/latest', {
-                method: 'GET'
+            fetch('/api/smart_sampling/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(samplingCfg)
             })
             .then(response => response.json())
             .then(data => {
+                clearInterval(progressInterval);
                 loadingIndicator.style.display = 'none';
                 
                 if (data.status === 'success') {
+                    logMessage('[PARTY] Full analysis completed successfully!');
                     displayResults(data);
                 } else {
+                    logMessage(`[ERROR] Error: ${data.error}`);
                     resultsContainer.innerHTML = `<div class="result-block error"><h3>Error</h3><p>${data.error}</p></div>`;
                 }
             })
             .catch(error => {
+                clearInterval(progressInterval);
                 loadingIndicator.style.display = 'none';
+                logMessage(`[ERROR] Network Error: ${error.message}`);
                 resultsContainer.innerHTML = `<div class="result-block error"><h3>Network Error</h3><p>${error.message}</p></div>`;
             })
             .finally(() => {

@@ -182,7 +182,7 @@ Avg Update Time: {avg_update_time:.1f} ms
 Throughput: {throughput:.1f} points/sec
 Memory Usage: {len(self.embedding_history)} points
 Anomalies Detected: {sum(self.anomaly_history)}
-Current Status: {'🚨 ANOMALY' if reading.get('has_anomaly', False) else '✅ Normal'}
+Current Status: {'ANOMALY' if reading.get('has_anomaly', False) else 'Normal'}
             """.strip()
             
             self.ax_performance.text(0.05, 0.95, metrics_text, transform=self.ax_performance.transAxes, 
@@ -214,12 +214,12 @@ Current Status: {'🚨 ANOMALY' if reading.get('has_anomaly', False) else '✅ N
     def inject_anomaly(self, anomaly_type='spike', duration=50):
         """Inject an anomaly for demonstration."""
         self.simulator.inject_anomaly(anomaly_type, duration=duration)
-        print(f"🚨 Injected {anomaly_type} anomaly for {duration} time steps")
+        print(f"Injected {anomaly_type} anomaly for {duration} time steps")
         
     def run(self):
         """Start the live demo."""
-        print("🚀 Starting Live Sensor Demo...")
-        print("📊 Real-time NormalizedDynamics embedding of IoT sensor data")
+        print("Starting Live Sensor Demo...")
+        print("Real-time NormalizedDynamics embedding of IoT sensor data")
         print("🔄 Press Ctrl+C to stop\n")
         
         # Create animation
@@ -269,7 +269,7 @@ def main():
     except KeyboardInterrupt:
         print("\n🛑 Demo stopped by user")
     except Exception as e:
-        print(f"❌ Demo error: {e}")
+        print(f"Demo error: {e}")
 
 
 if __name__ == "__main__":

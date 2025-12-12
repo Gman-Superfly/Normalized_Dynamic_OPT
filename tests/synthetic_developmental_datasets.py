@@ -433,6 +433,148 @@ class SyntheticDevelopmentalDatasets:
             'dataset_name': 'spatial_cortical_layers',
             'description': 'Synthetic spatial transcriptomics with cortical layer gradients'
         }
+
+    def create_linear_progression(
+        self,
+        n_cells: int = 3000,
+        n_genes: int = 2000,
+        noise_level: float = 0.15,
+    ) -> Dict[str, np.ndarray]:
+        """
+        Create a simple linear developmental progression dataset.
+
+        This dataset models a single lineage with no branching, so it tests:
+        - Temporal ordering preservation
+        - Smooth trajectory geometry
+        - Avoiding artificial clustering
+        """
+        np.random.seed(self.random_seed)
+        assert n_cells >= 100, "n_cells too small for stable metrics"
+        assert n_genes >= 100, "n_genes too small for realistic structure"
+
+        # Ground truth pseudotime and coordinates (a gently curved line).
+        true_pseudotime = np.random.uniform(0.0, 1.0, n_cells)
+        true_pseudotime = np.clip(true_pseudotime, 0.0, 1.0)
+
+        x_coord = true_pseudotime + np.random.normal(0, 0.03, n_cells)
+        y_coord = 0.2 * np.sin(2.0 * np.pi * true_pseudotime) + np.random.normal(0, 0.03, n_cells)
+        spatial_coordinates = np.column_stack([x_coord, y_coord]).astype(np.float32)
+
+        # Stage labels for evaluation convenience (quartiles).
+        bins = np.quantile(true_pseudotime, [0.25, 0.5, 0.75])
+        cell_types = np.empty(n_cells, dtype=object)
+        cell_types[true_pseudotime <= bins[0]] = 'Stage_1'
+        cell_types[(true_pseudotime > bins[0]) & (true_pseudotime <= bins[1])] = 'Stage_2'
+        cell_types[(true_pseudotime > bins[1]) & (true_pseudotime <= bins[2])] = 'Stage_3'
+        cell_types[true_pseudotime > bins[2]] = 'Stage_4'
+
+        lineage_labels = np.array(['linear'] * n_cells, dtype=object)
+
+        # Simple chain for branching evaluator (not true branching, but gives non-empty structure).
+        bifurcation_tree = {
+            'Stage_1': ['Stage_2'],
+            'Stage_2': ['Stage_3'],
+            'Stage_3': ['Stage_4'],
+        }
+
+        # Expression model: early genes decrease, late genes increase, some oscillatory genes.
+        X = np.random.normal(0, 1, (n_cells, n_genes)).astype(np.float32)
+        n_early = min(400, n_genes // 3)
+        n_late = min(400, n_genes // 3)
+        n_osc = min(200, n_genes // 10)
+
+        X[:, :n_early] += (1.5 * (1.0 - true_pseudotime))[:, None]
+        X[:, n_early:n_early + n_late] += (1.5 * true_pseudotime)[:, None]
+        X[:, n_early + n_late:n_early + n_late + n_osc] += (0.6 * np.sin(2.0 * np.pi * true_pseudotime))[:, None]
+        X += np.random.normal(0, noise_level, X.shape).astype(np.float32)
+
+        return {
+            'X': X,
+            'cell_types': np.array(cell_types),
+            'true_pseudotime': np.array(true_pseudotime),
+            'lineage_labels': lineage_labels,
+            'spatial_coordinates': spatial_coordinates,
+            'bifurcation_tree': bifurcation_tree,
+            'dataset_name': 'linear_progression',
+            'description': 'Synthetic single-lineage linear progression with smooth geometry'
+        }
+
+    def create_cyclical_patterns(
+        self,
+        n_cells: int = 3000,
+        n_genes: int = 2000,
+        noise_level: float = 0.15,
+    ) -> Dict[str, np.ndarray]:
+        """
+        Create a cyclical developmental dataset (cell cycle-like).
+
+        This dataset tests:
+        - Preserving cyclic topology
+        - Avoiding artificial line breaks
+        - Smooth progression around a loop
+        """
+        np.random.seed(self.random_seed)
+        assert n_cells >= 100, "n_cells too small for stable metrics"
+        assert n_genes >= 100, "n_genes too small for realistic structure"
+
+        true_pseudotime = np.random.uniform(0.0, 1.0, n_cells)
+        true_pseudotime = np.clip(true_pseudotime, 0.0, 1.0)
+
+        theta = 2.0 * np.pi * true_pseudotime
+        x_coord = np.cos(theta) + np.random.normal(0, 0.03, n_cells)
+        y_coord = np.sin(theta) + np.random.normal(0, 0.03, n_cells)
+        spatial_coordinates = np.column_stack([x_coord, y_coord]).astype(np.float32)
+
+        # Cell cycle phases by pseudotime quartiles.
+        cell_types = np.empty(n_cells, dtype=object)
+        cell_types[(true_pseudotime >= 0.0) & (true_pseudotime < 0.25)] = 'G1'
+        cell_types[(true_pseudotime >= 0.25) & (true_pseudotime < 0.5)] = 'S'
+        cell_types[(true_pseudotime >= 0.5) & (true_pseudotime < 0.75)] = 'G2'
+        cell_types[(true_pseudotime >= 0.75) & (true_pseudotime <= 1.0)] = 'M'
+
+        lineage_labels = np.array(['cycle'] * n_cells, dtype=object)
+
+        # A partial chain (no wrap) to keep branching evaluator stable.
+        bifurcation_tree = {
+            'G1': ['S'],
+            'S': ['G2'],
+            'G2': ['M'],
+        }
+
+        # Expression model: strong sinusoidal programs + phase markers.
+        X = np.random.normal(0, 1, (n_cells, n_genes)).astype(np.float32)
+        n_sin = min(600, n_genes // 2)
+        n_cos = min(600, n_genes // 2)
+        n_phase = min(200, n_genes // 10)
+
+        X[:, :n_sin] += (1.2 * np.sin(theta))[:, None]
+        X[:, n_sin:n_sin + n_cos] += (1.2 * np.cos(theta))[:, None]
+
+        # Phase marker blocks.
+        phase_blocks = {
+            'G1': (0.0, 0.25, 0),
+            'S': (0.25, 0.5, 1),
+            'G2': (0.5, 0.75, 2),
+            'M': (0.75, 1.0, 3),
+        }
+        start = n_sin + n_cos
+        block = max(1, n_phase // 4)
+        for phase, (a, b, idx) in phase_blocks.items():
+            mask = (true_pseudotime >= a) & (true_pseudotime < b if phase != 'M' else true_pseudotime <= b)
+            X[mask, start + idx * block:start + (idx + 1) * block] += 1.5
+
+        X += np.random.normal(0, noise_level, X.shape).astype(np.float32)
+
+        return {
+            'X': X,
+            'cell_types': np.array(cell_types),
+            'true_pseudotime': np.array(true_pseudotime),
+            'lineage_labels': lineage_labels,
+            'spatial_coordinates': spatial_coordinates,
+            'bifurcation_tree': bifurcation_tree,
+            'dataset_name': 'cyclical_patterns',
+            'description': 'Synthetic cyclical (cell cycle-like) dataset with loop topology'
+        }
     
     def _generate_hematopoietic_expression(self, cell_type: str, pseudotime: float, 
                                          n_genes: int, noise_level: float) -> np.ndarray:
@@ -538,10 +680,20 @@ def create_all_synthetic_datasets(random_seed: int = 42) -> Dict[str, Dict]:
     # Hematopoietic differentiation
     print("  Creating hematopoietic differentiation dataset...")
     datasets['hematopoietic'] = generator.create_hematopoietic_differentiation()
+
+    # Linear progression
+    print("  Creating linear progression dataset...")
+    datasets['linear'] = generator.create_linear_progression()
+    
+    # Cyclical patterns
+    print("  Creating cyclical patterns dataset...")
+    datasets['cyclical'] = generator.create_cyclical_patterns()
     
     # Neural crest development
     print("  Creating neural crest development dataset...")
     datasets['neural_crest'] = generator.create_neural_crest_development()
+    # Alias used by UI label "complex"
+    datasets['complex'] = datasets['neural_crest']
     
     # Spatial cortical layers
     print("  Creating spatial cortical layers dataset...")

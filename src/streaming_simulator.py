@@ -63,6 +63,11 @@ class StreamingSensorSimulator:
         
         # Track sensor readings for correlations
         self.last_temperature = self.sensor_config['temperature']['base']
+
+        # Latest snapshot state (for event-driven mode)
+        self.sensor_names = list(self.sensor_config.keys())[:self.n_sensors]
+        self.latest_values = {name: self.sensor_config[name]['base'] for name in self.sensor_names}
+        self.latest_values_array = [self.latest_values[name] for name in self.sensor_names]
         
         # Anomaly injection system
         self.active_anomalies = {}
@@ -179,6 +184,127 @@ class StreamingSensorSimulator:
         
         self.time_step += 1
         return reading
+
+    def generate_sensor_event(self):
+        """Generate a single sensor update event and update the internal snapshot.
+
+        The event stream format matches common IoT transports:
+        - (timestamp, sensor_id, value)
+
+        The simulator also maintains a "latest value per sensor" snapshot so the
+        model can consume a fixed-dimensional vector.
+        """
+        current_time = time.time() - self.start_time
+        assert self.n_sensors >= 1, "n_sensors must be >= 1"
+
+        sensor_id = int(self.time_step % self.n_sensors)
+        sensor_name = self.sensor_names[sensor_id]
+        config = self.sensor_config[sensor_name]
+
+        base_value = config['base']
+        pattern = config['amplitude'] * np.sin(current_time * config['frequency'] + sensor_id)
+        noise = np.random.normal(0, config['noise'])
+
+        # Correlations (use last_temperature, updated when temperature events occur)
+        if sensor_name == 'humidity':
+            temp_effect = -0.5 * (self.last_temperature - self.sensor_config['temperature']['base'])
+            pattern += temp_effect
+        elif sensor_name == 'co2':
+            activity_boost = 100 * np.sin(current_time * 0.1) ** 2
+            pattern += activity_boost
+        elif sensor_name == 'light':
+            day_cycle = np.maximum(0, np.sin(current_time * 0.04))
+            pattern = config['amplitude'] * day_cycle
+
+        value = base_value + pattern + noise
+
+        # Apply active anomalies (same rules as snapshot mode)
+        for anomaly_id, anomaly in self.active_anomalies.items():
+            if not anomaly['active']:
+                continue
+            if self.time_step - anomaly['start_time'] > anomaly['duration']:
+                anomaly['active'] = False
+                continue
+            if sensor_name in anomaly['sensors']:
+                intensity = anomaly['intensity']
+                if anomaly['type'] == 'spike':
+                    spike_factor = 2.0 + intensity
+                    value = base_value + (pattern * spike_factor) + (noise * 3)
+                elif anomaly['type'] == 'drift':
+                    drift_progress = (self.time_step - anomaly['start_time']) / anomaly['duration']
+                    drift_amount = config['amplitude'] * intensity * drift_progress
+                    value = base_value + pattern + drift_amount + noise
+                elif anomaly['type'] == 'failure':
+                    value = config['base']
+                elif anomaly['type'] == 'fire_alarm':
+                    if sensor_name == 'temperature':
+                        value = 45 + 20 * intensity + noise
+                    elif sensor_name == 'co2':
+                        value = 800 + 400 * intensity + noise
+                    elif sensor_name == 'light':
+                        value = 50 + noise
+                elif anomaly['type'] == 'equipment_failure':
+                    if sensor_name == 'vibration':
+                        value = 5 + 3 * intensity + noise * 2
+                    elif sensor_name == 'temperature':
+                        value = 35 + 10 * intensity + noise
+                elif anomaly['type'] == 'network_interference':
+                    interference_noise = np.random.normal(0, config['noise'] * 5 * intensity)
+                    value = base_value + pattern + interference_noise
+
+        # Bounds
+        if sensor_name == 'humidity':
+            value = np.clip(value, 0, 100)
+        elif sensor_name == 'pressure':
+            value = np.clip(value, 980, 1040)
+        elif sensor_name == 'co2':
+            value = np.clip(value, 300, 1500)
+        elif sensor_name == 'light':
+            value = np.clip(value, 0, 1000)
+        elif sensor_name == 'vibration':
+            value = np.clip(value, 0, 10)
+
+        # Update snapshot state
+        self.latest_values[sensor_name] = float(value)
+        if sensor_name == 'temperature':
+            self.last_temperature = float(value)
+
+        self.latest_values_array = [self.latest_values[name] for name in self.sensor_names]
+
+        has_anomaly = len([a for a in self.active_anomalies.values() if a['active']]) > 0
+
+        event = {
+            'timestamp': current_time,
+            'sensor_id': sensor_id,
+            'sensor_name': sensor_name,
+            'value': round(float(value), 2),
+            'unit': config.get('unit', ''),
+            'anomaly_status': self.get_anomaly_status(),
+            'has_anomaly': has_anomaly,
+            'values_array': self.latest_values_array,
+        }
+
+        # Also provide a snapshot dict for UI convenience
+        snapshot = {name: round(float(self.latest_values[name]), 2) for name in self.sensor_names}
+        snapshot['timestamp'] = current_time
+        snapshot['values_array'] = self.latest_values_array
+        snapshot['anomaly_status'] = event['anomaly_status']
+        snapshot['has_anomaly'] = has_anomaly
+        snapshot['event'] = {
+            'sensor_id': sensor_id,
+            'sensor_name': sensor_name,
+            'value': event['value'],
+        }
+
+        self.time_step += 1
+        return snapshot
+
+    def stream_events(self):
+        """Generator that yields one (sensor_id, value) event per tick."""
+        while True:
+            reading = self.generate_sensor_event()
+            yield reading
+            time.sleep(self.update_interval)
     
     def stream(self):
         """Generator that yields sensor readings at specified interval"""

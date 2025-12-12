@@ -32,7 +32,11 @@ This is not post-hoc interpretation but emerges directly from the algorithm's ma
 2. **Scale-Preserving Normalization**: Prevents embedding drift during iteration and maintains feature-wise scale consistency
 3. **Multi-Criteria Convergence**: Efficient optimization with cost-based and stability-based stopping
 4. **Dimension-Dependent Step Size**: Automatic scaling based on target dimensionality
-5. **Emergent Multi-Level Error Correction**: The algorithm naturally implements hierarchical error correction without explicit programming:
+5. **Configurable Kernel Function**: Two kernel types available via `kernel_type` parameter:
+   - **Exponential** (default): `K = exp(-d / (2σ²))` - Linear distance decay, empirically effective on biological trajectory data
+   - **Gaussian**: `K = exp(-d² / (2σ²))` - Squared distance decay, standard RBF kernel formulation
+   - Both are valid kernel functions with different smoothness properties. Users can compare results using the streaming demo UI.
+6. **Emergent Multi-Level Error Correction**: The algorithm naturally implements hierarchical error correction without explicit programming:
    - **Local error correction**: When point i is misplaced, kernel weights p(j|i) reflect true neighborhood structure, drift δᵢ = Σⱼ p(j|i) hⱼ pulls toward correct local centroid, reducing prediction error ||hᵢ - δᵢ||²
    - **Global error correction**: Scale preservation h ← h × (σ_original/σ_current) prevents local corrections from destroying global relationships, maintaining information coherence across scales  
    - **Prediction error minimization**: Each iteration directly minimizes Σᵢ ||hᵢ - δᵢ||², converging to configuration where each point is at its neighborhood-predicted location

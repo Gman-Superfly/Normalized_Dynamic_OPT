@@ -33,11 +33,37 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
     2. Local density patterns (dense regions need fewer, sparse regions need more)
     3. Data dimensionality (higher dimensions need more neighbors)
     4. Biological structure preservation requirements
+    
+    Args:
+        dim: Target embedding dimensions (default: 2)
+        k_base: Base K parameter, or None for automatic computation
+        alpha: Step size parameter (default: 1.0)
+        max_iter: Maximum iterations (default: 50)
+        noise_scale: Stochastic noise amplitude (default: 0.01)
+        eta: Learning rate for adaptive updates (default: 0.01)
+        target_local_structure: Target for adaptive stopping (default: 0.95)
+        adaptive_params: Enable adaptive parameter adjustment (default: True)
+        k_adaptation_strategy: K adaptation strategy (default: 'smart')
+        device: Computation device 'cpu' or 'cuda' (default: 'cpu')
+        kernel_type: Kernel function type (default: 'exponential')
+            - 'exponential': K = exp(-d / (2σ²)) - linear distance decay, empirically effective
+            - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay, standard RBF
+            - 'generalized': K = exp(-(d^p) / (2σ²)) - generalized exponential family
+            - 'student_t': K = (1 + d²/(νσ²))^(-(ν+1)/2) - heavy-tailed Student-t kernel
+            - 'rational_quadratic': K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture
+        kernel_p: Exponent p for kernel_type='generalized' (default: 1.5)
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t' (default: 1.0)
+        kernel_alpha: Shape α for kernel_type='rational_quadratic' (default: 1.0)
+        kernel_beta: Kernel slope (scale) β that multiplies distance (default: 1.0)
+        learn_kernel_beta: If True, auto-tunes kernel_beta using local structure feedback (default: False)
+        kernel_beta_eta: Learning rate for kernel_beta updates (default: 0.01)
     """
     
     def __init__(self, dim=2, k_base=None, alpha=1.0, max_iter=50, noise_scale=0.01, 
                  eta=0.01, target_local_structure=0.95, adaptive_params=True, 
-                 k_adaptation_strategy='smart', device='cpu'):
+                 k_adaptation_strategy='smart', device='cpu', kernel_type='exponential',
+                 kernel_p=1.5, kernel_nu=1.0, kernel_alpha=1.0,
+                 kernel_beta=1.0, learn_kernel_beta=False, kernel_beta_eta=0.01):
         super(NormalizedDynamicsSmartK, self).__init__()
         
         self.dim = dim
@@ -50,6 +76,35 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         self.adaptive_params = adaptive_params
         self.k_adaptation_strategy = k_adaptation_strategy
         self.device = device
+        self.kernel_type = kernel_type
+        self.kernel_p = float(kernel_p)
+        self.kernel_nu = float(kernel_nu)
+        self.kernel_alpha = float(kernel_alpha)
+        self.learn_kernel_beta = bool(learn_kernel_beta)
+        self.kernel_beta_eta = float(kernel_beta_eta)
+
+        if self.learn_kernel_beta and self.adaptive_params:
+            self.kernel_beta = torch.nn.Parameter(torch.tensor(float(kernel_beta)))
+        else:
+            self.kernel_beta = float(kernel_beta)
+
+        # Validate kernel_type
+        valid_kernel_types = ('exponential', 'gaussian', 'generalized', 'student_t', 'rational_quadratic')
+        if kernel_type not in valid_kernel_types:
+            raise ValueError(f"kernel_type must be one of {valid_kernel_types}, got '{kernel_type}'")
+
+        if self.kernel_p <= 0:
+            raise ValueError(f"kernel_p must be > 0, got {self.kernel_p}")
+        if self.kernel_nu <= 0:
+            raise ValueError(f"kernel_nu must be > 0, got {self.kernel_nu}")
+        if self.kernel_alpha <= 0:
+            raise ValueError(f"kernel_alpha must be > 0, got {self.kernel_alpha}")
+        if self.kernel_beta_eta <= 0:
+            raise ValueError(f"kernel_beta_eta must be > 0, got {self.kernel_beta_eta}")
+
+        # Store original data characteristics for K computation
+        self.original_n_samples = None
+        self.original_n_features = None
         
         # K adaptation parameters
         self.k_history = []
@@ -104,7 +159,7 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         
         optimal_k = np.clip(base_k, min_k, max_k)
         
-        print(f"📊 Computed optimal K: {optimal_k} (size: {size_k}, dim: {dim_k}, bio: {bio_k})")
+        print(f"Computed optimal K: {optimal_k} (size: {size_k}, dim: {dim_k}, bio: {bio_k})")
         return optimal_k
     
     def adaptive_k_selection(self, x, dists):
@@ -116,9 +171,14 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         2. 'density': Adapt based on local density only  
         3. 'size': Adapt based on dataset size only
         4. 'fixed': Use base K without adaptation
+
+        Note: K computation is based on original input data characteristics,
+        not current embedding state, to ensure consistent adaptation.
         """
-        n_samples = x.size(0)
-        base_k = self.compute_optimal_k_base(n_samples, x.size(1))
+        # Use original data characteristics for K computation
+        n_samples = self.original_n_samples if self.original_n_samples is not None else x.size(0)
+        n_features = self.original_n_features if self.original_n_features is not None else x.size(1)
+        base_k = self.compute_optimal_k_base(n_samples, n_features)
         
         if self.k_adaptation_strategy == 'fixed':
             return base_k
@@ -303,7 +363,22 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         sigma = kth_dists[:, -1].view(-1, 1)  # Adaptive bandwidth parameter
         
         # Global kernel computation with adaptive bandwidth
-        kernel = torch.exp(-dists / (2 * sigma**2 + 1e-8))
+        eps = 1e-8
+        denom = (2 * sigma**2 + eps)
+        beta_val = self.kernel_beta if isinstance(self.kernel_beta, float) else self.kernel_beta.item()
+
+        if self.kernel_type == 'gaussian':
+            kernel = torch.exp(-(beta_val * (dists**2)) / denom)
+        elif self.kernel_type == 'exponential':
+            kernel = torch.exp(-(beta_val * dists) / denom)
+        elif self.kernel_type == 'generalized':
+            kernel = torch.exp(-(beta_val * (dists**self.kernel_p)) / denom)
+        elif self.kernel_type == 'student_t':
+            kernel = (1.0 + (beta_val * (dists**2)) / (self.kernel_nu * sigma**2 + eps)) ** (-(self.kernel_nu + 1.0) / 2.0)
+        elif self.kernel_type == 'rational_quadratic':
+            kernel = (1.0 + (beta_val * (dists**2)) / (2.0 * self.kernel_alpha * sigma**2 + eps)) ** (-self.kernel_alpha)
+        else:
+            raise ValueError(f"Unhandled kernel_type: {self.kernel_type}")
         kernel = kernel / (torch.sum(kernel, dim=1, keepdim=True) + 1e-8)
         
         # Comprehensive drift calculation with global information integration
@@ -336,7 +411,11 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         X = X.to(self.device)
         
         n_samples, n_features = X.shape
-        print(f"🧠 Smart K adaptation for dataset: {n_samples} cells × {n_features} features")
+        print(f"Smart K adaptation for dataset: {n_samples} cells × {n_features} features")
+
+        # Store original data characteristics for K computation
+        self.original_n_samples = n_samples
+        self.original_n_features = n_features
         
         # Better initialization
         if X.shape[1] <= self.dim:
@@ -381,6 +460,13 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
                         with torch.no_grad():
                             self.alpha += self.eta * error
                             self.alpha.clamp_(0.01, 2.0)
+
+                    # Adaptive kernel_beta adjustment (kernel slope auto-tuning)
+                    if self.learn_kernel_beta and isinstance(self.kernel_beta, torch.nn.Parameter):
+                        error = self.target_local_structure - metrics['local_structure']
+                        with torch.no_grad():
+                            self.kernel_beta += self.kernel_beta_eta * error
+                            self.kernel_beta.clamp_(0.1, 10.0)
                     
                     # Early stopping
                     if iteration > 10:
@@ -411,7 +497,7 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
                 'max': np.max(self.k_history),
                 'final': self.k_history[-1]
             }
-            print(f"📈 K adaptation summary: mean={k_stats['mean']:.1f}, "
+            print(f"K adaptation summary: mean={k_stats['mean']:.1f}, "
                   f"range=[{k_stats['min']}-{k_stats['max']}], final={k_stats['final']}")
         
         return embedding.cpu().detach().numpy()
@@ -441,13 +527,16 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         }
 
 # Convenience function for easy testing
-def create_smart_k_algorithm(dataset_size, strategy='smart', **kwargs):
+def create_smart_k_algorithm(dataset_size, strategy='smart', kernel_type='exponential', **kwargs):
     """
     Create NormalizedDynamicsSmartK with optimal settings for dataset size.
     
     Args:
         dataset_size: Number of samples in dataset
         strategy: K adaptation strategy ('smart', 'density', 'size', 'fixed')
+        kernel_type: Kernel function type ('exponential' or 'gaussian')
+            - 'exponential': K = exp(-d / (2σ²)) - linear distance decay, empirically effective
+            - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay, standard RBF
         **kwargs: Additional parameters
     """
     # Default parameters optimized for smart sampling scenarios
@@ -459,6 +548,13 @@ def create_smart_k_algorithm(dataset_size, strategy='smart', **kwargs):
         'target_local_structure': 0.96,
         'adaptive_params': True,
         'k_adaptation_strategy': strategy,
+        'kernel_type': kernel_type,
+        'kernel_p': 1.5,
+        'kernel_nu': 1.0,
+        'kernel_alpha': 1.0,
+        'kernel_beta': 1.0,
+        'learn_kernel_beta': False,
+        'kernel_beta_eta': 0.01,
         'device': 'cpu'
     }
     
@@ -471,7 +567,7 @@ def create_smart_k_algorithm(dataset_size, strategy='smart', **kwargs):
     elif dataset_size >= 5000:
         params['max_iter'] = 120  # More iterations for large datasets
     
-    print(f"🚀 Creating SmartK algorithm for {dataset_size} samples with '{strategy}' adaptation")
+    print(f"Creating SmartK algorithm for {dataset_size} samples with '{strategy}' adaptation")
     
     return NormalizedDynamicsSmartK(**params)
 
@@ -508,4 +604,4 @@ if __name__ == "__main__":
             print(f"Runtime: {runtime:.2f}s")
             print(f"K adaptation: {k_info['k_statistics']}")
     
-    print("\n✅ Smart K adaptation testing complete!") 
+    print("\nSmart K adaptation testing complete.")

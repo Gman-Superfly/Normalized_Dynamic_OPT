@@ -65,18 +65,34 @@ pip install -r requirements.txt
 ```python
 from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized
 
-# Initialize with adaptive features enabled :
+# Initialize with adaptive features enabled:
 nd = NormalizedDynamicsOptimized(
     dim=2,                    # Target dimensions
     k=20,                     # Base neighbors (auto-adapted)
     alpha=1.0,                # Bandwidth parameter (adaptive)
     max_iter=50,              # Maximum iterations
     adaptive_params=True,     # Enable self-correction
-    device='cpu'              # or 'cuda' for GPU
+    device='cpu',             # or 'cuda' for GPU
+    kernel_type='exponential' # or 'gaussian' for standard RBF
 )
 
 # Fit and transform your data:
 X_embedded = nd.fit_transform(X)
+```
+
+### Kernel Type Options
+
+The algorithm supports two kernel functions for distance weighting:
+
+- **`'exponential'`** (default): `K = exp(-d / (2σ²))` - Linear distance decay. Works well empirically on biological trajectory data.
+- **`'gaussian'`**: `K = exp(-d² / (2σ²))` - Squared distance decay. Standard RBF kernel formulation.
+
+```python
+# Use Gaussian kernel (standard RBF)
+nd_gaussian = NormalizedDynamicsOptimized(dim=2, kernel_type='gaussian')
+
+# Use Exponential kernel (default, empirically effective)
+nd_exponential = NormalizedDynamicsOptimized(dim=2, kernel_type='exponential')
 ```
 
 # Smart sampling:
@@ -328,11 +344,15 @@ Navigate to `http://localhost:5000` for:
 - `alpha`: Bandwidth scaling factor (default: 1.0, with adaptive adjustment)
 - `max_iter`: Maximum iterations (default: 50)
 - `noise_scale`: Stochastic exploration level (default: 0.01)
+- `kernel_type`: Kernel function for distance weighting (default: 'exponential')
+  - `'exponential'`: K = exp(-d / (2σ²)) - Linear distance decay, empirically effective
+  - `'gaussian'`: K = exp(-d² / (2σ²)) - Squared distance decay, standard RBF kernel
 
 ### Adaptive Features
 - **Smart K**: Automatic adjustment using density factors and dataset characteristics
 - **Dynamic Alpha**: Performance feedback-based adaptation for optimal convergence
 - **Early Stopping**: Multi-criteria convergence detection with patience mechanisms
+- **Kernel Selection**: Choose between exponential (default) and Gaussian kernels via UI or API
 
 ## Project Structure
 

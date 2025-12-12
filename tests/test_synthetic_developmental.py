@@ -44,6 +44,7 @@ from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import spearmanr
+from src.diffusion_maps import DiffusionMaps
 
 # Check for optional dependencies
 try:
@@ -405,11 +406,29 @@ class SyntheticDevelopmentalEvaluator:
 
 
 def run_synthetic_developmental_comparison(datasets: Optional[Dict] = None,
-                                         save_results: bool = True) -> Tuple[Dict, Dict, str]:
+                                         save_results: bool = True,
+                                         kernel_type: str = 'exponential',
+                                         kernel_p: float = 1.5,
+                                         kernel_nu: float = 1.0,
+                                         kernel_alpha: float = 1.0,
+                                         kernel_beta: float = 1.0,
+                                         learn_kernel_beta: bool = False,
+                                         k_adaptation_strategy: str = 'off',
+                                         k_base: int = 20,
+                                         sampling_method: str = 'off',
+                                         target_size: int = 2000,
+                                         spatial_weight: float = 0.7,
+                                         selected_algorithms: list[str] | None = None) -> Tuple[Dict, Dict, str]:
     """
     Run comprehensive comparison on all synthetic developmental datasets.
-    
+
     Args:
+        datasets: Dictionary of datasets to analyze
+        save_results: Whether to save results to disk
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
         datasets: Optional pre-generated datasets
         save_results: Whether to save visualization results
         
@@ -430,20 +449,53 @@ def run_synthetic_developmental_comparison(datasets: Optional[Dict] = None,
     evaluator = SyntheticDevelopmentalEvaluator(verbose=True)
     
     # Algorithm configurations optimized for developmental biology
-    algorithms = {
-        'NormalizedDynamics': {
+    # Select algorithm variant based on k_adaptation_strategy
+    if k_adaptation_strategy != 'off':
+        from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+        k_base_value = int(k_base) if k_adaptation_strategy == 'fixed' else None
+        normdyn_entry = {
+            'class': NormalizedDynamicsSmartK,
+            'params': {
+                'dim': 2,
+                'k_base': k_base_value,
+                'k_adaptation_strategy': k_adaptation_strategy,
+                'alpha': 1.2,
+                'max_iter': 80,
+                'kernel_type': kernel_type,
+                'kernel_p': kernel_p,
+                'kernel_nu': kernel_nu,
+                'kernel_alpha': kernel_alpha,
+                'kernel_beta': kernel_beta,
+                'learn_kernel_beta': learn_kernel_beta,
+                'eta': 0.003,
+                'target_local_structure': 0.95,
+                'adaptive_params': True,
+                'device': 'cpu'
+            }
+        }
+    else:
+        normdyn_entry = {
             'class': NormalizedDynamicsOptimized,
             'params': {
                 'dim': 2,
                 'k': 25,                    # More neighbors for global connectivity
                 'alpha': 1.2,               # Slightly higher bandwidth
                 'max_iter': 80,             # More iterations for quality
+                'kernel_type': kernel_type, # Kernel function selection
+                'kernel_p': kernel_p,
+                'kernel_nu': kernel_nu,
+                'kernel_alpha': kernel_alpha,
+                'kernel_beta': kernel_beta,
+                'learn_kernel_beta': learn_kernel_beta,
                 'eta': 0.003,               # Lower learning rate for precision
                 'target_local_structure': 0.95,
                 'adaptive_params': True,
                 'device': 'cpu'
             }
-        },
+        }
+
+    algorithms = {
+        'NormalizedDynamics': normdyn_entry,
         't-SNE': {
             'class': TSNE,
             'params': {
@@ -467,9 +519,37 @@ def run_synthetic_developmental_comparison(datasets: Optional[Dict] = None,
                 'random_state': 42
             }
         }
+
+    algorithms['Diffusion Maps'] = {
+        'class': DiffusionMaps,
+        'params': {
+            'n_components': 2,
+            'n_neighbors': 30,
+            'alpha': 0.5,
+            't': 1,
+        }
+    }
+
+    # Optional filtering from UI (keys: normdyn, tsne, umap, diffmap).
+    if selected_algorithms:
+        allowed = set()
+        for key in selected_algorithms:
+            key_norm = str(key).strip().lower()
+            if key_norm == 'normdyn':
+                allowed.add('NormalizedDynamics')
+            elif key_norm == 'tsne':
+                allowed.add('t-SNE')
+            elif key_norm == 'umap':
+                allowed.add('UMAP')
+            elif key_norm == 'diffmap':
+                allowed.add('Diffusion Maps')
+
+        if allowed:
+            algorithms = {name: cfg for name, cfg in algorithms.items() if name in allowed}
     
     all_results = {}
     all_embeddings = {}
+    datasets_used = {}
     
     # Process each synthetic dataset
     for dataset_name, dataset in datasets.items():
@@ -481,6 +561,50 @@ def run_synthetic_developmental_comparison(datasets: Optional[Dict] = None,
         print(f"Cell types: {len(np.unique(dataset['cell_types']))}")
         print(f"Pseudotime range: {dataset['true_pseudotime'].min():.3f} - {dataset['true_pseudotime'].max():.3f}")
         
+        X_raw = dataset['X']
+        original_n = int(X_raw.shape[0])
+        cell_types = dataset['cell_types']
+        true_pseudotime = dataset['true_pseudotime']
+        spatial_coordinates = dataset.get('spatial_coordinates', None)
+        lineage_labels = dataset.get('lineage_labels', None)
+
+        # Optional smart sampling (spatial/hybrid uses spatial_coordinates when available)
+        if sampling_method != 'off':
+            from src.smart_sampling import select_sample_indices
+            spatial_coords = None
+            if isinstance(spatial_coordinates, np.ndarray) and spatial_coordinates.ndim == 2 and spatial_coordinates.shape[0] == original_n:
+                spatial_coords = spatial_coordinates[:, :2] if spatial_coordinates.shape[1] >= 2 else None
+
+            indices = select_sample_indices(
+                data=X_raw,
+                method=str(sampling_method),
+                target_size=int(target_size),
+                spatial_coords=spatial_coords,
+                spatial_weight=float(spatial_weight),
+                random_state=42,
+            )
+            X_raw = X_raw[indices]
+            cell_types = cell_types[indices]
+            true_pseudotime = true_pseudotime[indices]
+            if isinstance(spatial_coordinates, np.ndarray) and spatial_coordinates.ndim == 2 and spatial_coordinates.shape[0] == original_n:
+                spatial_coordinates = spatial_coordinates[indices]
+            if isinstance(lineage_labels, np.ndarray) and lineage_labels.ndim == 1 and lineage_labels.shape[0] == original_n:
+                lineage_labels = lineage_labels[indices]
+
+            dataset = dict(dataset)
+            dataset['X'] = X_raw
+            dataset['cell_types'] = cell_types
+            dataset['true_pseudotime'] = true_pseudotime
+            if spatial_coordinates is not None:
+                dataset['spatial_coordinates'] = spatial_coordinates
+            if lineage_labels is not None:
+                dataset['lineage_labels'] = lineage_labels
+
+            print(f"Smart sampling applied: method={sampling_method}, final shape={X_raw.shape}")
+
+        # Keep the dataset actually used for evaluation and visualization.
+        datasets_used[dataset_name] = dataset
+
         # Standardize data
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(dataset['X'])
@@ -551,7 +675,7 @@ def run_synthetic_developmental_comparison(datasets: Optional[Dict] = None,
         print(f"{'='*60}")
         
         viz_path = create_synthetic_comparison_visualizations(
-            all_results, all_embeddings, datasets
+            all_results, all_embeddings, datasets_used
         )
         print(f"Visualizations saved to: {viz_path}")
     
@@ -704,16 +828,21 @@ def create_synthetic_comparison_visualizations(results: Dict, embeddings: Dict,
     
     # Create figure with subplots for each dataset
     n_datasets = len(datasets)
-    n_algorithms = len(next(iter(embeddings.values())))
+    algorithm_names_set = set()
+    for dataset_embeddings in embeddings.values():
+        for alg_name in dataset_embeddings.keys():
+            algorithm_names_set.add(alg_name)
+    algorithm_names = sorted(algorithm_names_set)
+    n_algorithms = len(algorithm_names)
     
-    fig, axes = plt.subplots(n_datasets, n_algorithms + 1, 
-                           figsize=(5 * (n_algorithms + 1), 5 * n_datasets))
-    
-    if n_datasets == 1:
-        axes = axes.reshape(1, -1)
+    fig, axes = plt.subplots(
+        n_datasets,
+        n_algorithms + 1,
+        figsize=(5 * (n_algorithms + 1), 5 * n_datasets),
+        squeeze=False,
+    )
     
     dataset_names = list(datasets.keys())
-    algorithm_names = list(next(iter(embeddings.values())).keys())
     
     for i, dataset_name in enumerate(dataset_names):
         dataset = datasets[dataset_name]

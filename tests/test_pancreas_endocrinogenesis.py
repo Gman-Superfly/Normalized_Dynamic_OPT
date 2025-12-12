@@ -264,9 +264,27 @@ def compute_developmental_trajectory_metrics(embedding, cell_types):
         'n_stages': len(np.unique(valid_stages))
     }
 
-def run_comparative_analysis():
+def run_comparative_analysis(
+    kernel_type='exponential',
+    kernel_p=1.5,
+    kernel_nu=1.0,
+    kernel_alpha=1.0,
+    kernel_beta=1.0,
+    learn_kernel_beta: bool = False,
+    k_adaptation_strategy: str = 'off',
+    k_base: int = 20,
+    sampling_method: str = 'off',
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+):
     """
     Run comprehensive comparison of NormalizedDynamics vs t-SNE vs UMAP
+
+    Args:
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
     """
     print("="*80)
     print("SINGLE-CELL RNA-SEQ PANCREAS ENDOCRINOGENESIS ANALYSIS")
@@ -288,18 +306,63 @@ def run_comparative_analysis():
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     
-    # Subsample for comparison if dataset is large
-    if X_scaled.shape[0] > 2000:
-        print(f"Subsampling to 2000 cells for computational efficiency...")
-        indices = np.random.choice(X_scaled.shape[0], 2000, replace=False)
+    # Subsample for comparison if dataset is large.
+    # If sampling_method is 'off', keep the historical behavior (random 2000 max).
+    if sampling_method == 'off':
+        if X_scaled.shape[0] > 2000:
+            print(f"Subsampling to 2000 cells for computational efficiency...")
+            indices = np.random.choice(X_scaled.shape[0], 2000, replace=False)
+            X_scaled = X_scaled[indices]
+            cell_types = cell_types[indices]
+    else:
+        from src.smart_sampling import select_sample_indices
+        indices = select_sample_indices(
+            data=X_scaled,
+            method=str(sampling_method),
+            target_size=int(target_size),
+            spatial_coords=None,
+            spatial_weight=float(spatial_weight),
+            random_state=42,
+        )
         X_scaled = X_scaled[indices]
         cell_types = cell_types[indices]
+        print(f"Smart sampling applied: method={sampling_method}, final shape={X_scaled.shape}")
     
     print(f"Final dataset for analysis: {X_scaled.shape}")
     
     # Initialize methods
+    if k_adaptation_strategy != 'off':
+        from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+        k_base_value = int(k_base) if k_adaptation_strategy == 'fixed' else None
+        normdyn_model = NormalizedDynamicsSmartK(
+            dim=2,
+            k_base=k_base_value,
+            max_iter=30,
+            adaptive_params=True,
+            device='cpu',
+            k_adaptation_strategy=k_adaptation_strategy,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+    else:
+        normdyn_model = NormalizedDynamicsOptimized(
+            dim=2,
+            max_iter=30,
+            adaptive_params=True,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+
     methods = {
-        'NormalizedDynamics': NormalizedDynamicsOptimized(dim=2, max_iter=30, adaptive_params=True)
+        'NormalizedDynamics': normdyn_model
     }
     
     # Add t-SNE
@@ -331,11 +394,11 @@ def run_comparative_analysis():
                 'n_stages': traj_metrics['n_stages']
             }
             
-            print(f"   ✅ Runtime: {runtime:.2f}s")
-            print(f"   📊 Trajectory smoothness: {traj_metrics['trajectory_smoothness']:.3f}")
+            print(f"   Runtime: {runtime:.2f}s")
+            print(f"   Trajectory smoothness: {traj_metrics['trajectory_smoothness']:.3f}")
             
         except Exception as e:
-            print(f"   ❌ Error: {e}")
+            print(f"   Error: {e}")
             results[method_name] = None
     
     # Create visualization
@@ -350,7 +413,7 @@ def create_developmental_visualization(results, cell_types):
     """
     Create comprehensive visualization showing developmental trajectories
     """
-    print("\n📊 Creating developmental trajectory visualization...")
+    print("\nCreating developmental trajectory visualization...")
     
     n_methods = len([r for r in results.values() if r is not None])
     fig, axes = plt.subplots(2, max(3, n_methods), figsize=(6*max(3, n_methods), 12))
@@ -441,7 +504,7 @@ def create_developmental_visualization(results, cell_types):
     plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
     
-    print(f"✅ Visualization saved: {filename}")
+    print(f"Visualization saved: {filename}")
     return filename
 
 def print_developmental_summary(results):
@@ -491,17 +554,47 @@ def print_developmental_summary(results):
     print("   • May suggest false 'cell types' that are actually transition states")
     print("   • Stochastic nature makes reproducible trajectory analysis difficult")
     
-    print("\n🎯 SCIENTIFIC CONCLUSION:")
+    print("\nSCIENTIFIC CONCLUSION:")
     print("   For single-cell developmental biology, algorithms that preserve")
     print("   continuous trajectories (like NormalizedDynamics) provide more")
     print("   biologically accurate representations than clustering-focused methods.")
 
-def run_and_visualize_pancreas():
+def run_and_visualize_pancreas(
+    kernel_type='exponential',
+    kernel_p=1.5,
+    kernel_nu=1.0,
+    kernel_alpha=1.0,
+    kernel_beta=1.0,
+    learn_kernel_beta: bool = False,
+    k_adaptation_strategy: str = 'off',
+    k_base: int = 20,
+    sampling_method: str = 'off',
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+):
     """
     Main function for web interface integration
+
+    Args:
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
     """
     try:
-        results, image_path = run_comparative_analysis()
+        results, image_path = run_comparative_analysis(
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+            k_adaptation_strategy=k_adaptation_strategy,
+            k_base=k_base,
+            sampling_method=sampling_method,
+            target_size=target_size,
+            spatial_weight=spatial_weight,
+        )
         
         # Extract timings for web interface
         timings = {}

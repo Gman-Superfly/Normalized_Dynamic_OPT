@@ -71,8 +71,19 @@ def run_analysis():
     Runs the Gaia data analysis and returns the results, including logs.
     """
     size = request.json.get('size', '500')
+    kernel_type = request.json.get('kernel_type', 'exponential')
+    kernel_p = request.json.get('kernel_p', 1.5)
+    kernel_nu = request.json.get('kernel_nu', 1.0)
+    kernel_alpha = request.json.get('kernel_alpha', 1.0)
+    kernel_beta = request.json.get('kernel_beta', 1.0)
+    learn_kernel_beta = request.json.get('learn_kernel_beta', False)
+    k_adaptation_strategy = request.json.get('k_adaptation_strategy', 'off')
+    k_base = request.json.get('k_base', 20)
+    sampling_method = request.json.get('sampling_method', 'off')
+    target_size = request.json.get('target_size', 2000)
+    spatial_weight = request.json.get('spatial_weight', 0.7)
     size_int = int(size)
-    
+
     data_dir = "data"
     filename = f"gaia_data_{size}.csv"
     data_path = os.path.join(data_dir, filename)
@@ -91,7 +102,20 @@ def run_analysis():
                 return jsonify({'success': False, 'error': error_message, 'logs': log_stream.getvalue()})
 
         # Run the main analysis
-        image_path, timings = run_and_visualize_gaia(data_path=data_path)
+        image_path, timings = run_and_visualize_gaia(
+            data_path=data_path,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+            k_adaptation_strategy=k_adaptation_strategy,
+            k_base=k_base,
+            sampling_method=sampling_method,
+            target_size=target_size,
+            spatial_weight=spatial_weight,
+        )
     
     logs = log_stream.getvalue()
 
@@ -112,9 +136,35 @@ def run_wine_analysis():
     """
     Runs the Wine dataset analysis and returns the results.
     """
+    # Get kernel configuration from request data
+    request_data = request.get_json() or {}
+    kernel_type = request_data.get('kernel_type', 'exponential')
+    kernel_p = request_data.get('kernel_p', 1.5)
+    kernel_nu = request_data.get('kernel_nu', 1.0)
+    kernel_alpha = request_data.get('kernel_alpha', 1.0)
+    kernel_beta = request_data.get('kernel_beta', 1.0)
+    learn_kernel_beta = request_data.get('learn_kernel_beta', False)
+    k_adaptation_strategy = request_data.get('k_adaptation_strategy', 'off')
+    k_base = request_data.get('k_base', 20)
+    sampling_method = request_data.get('sampling_method', 'off')
+    target_size = request_data.get('target_size', 150)
+    spatial_weight = request_data.get('spatial_weight', 0.7)
+
     log_stream = io.StringIO()
     with redirect_stdout(log_stream):
-        image_path, timings = run_and_visualize_wine()
+        image_path, timings = run_and_visualize_wine(
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+            k_adaptation_strategy=k_adaptation_strategy,
+            k_base=k_base,
+            sampling_method=sampling_method,
+            target_size=target_size,
+            spatial_weight=spatial_weight,
+        )
     
     logs = log_stream.getvalue()
 
@@ -145,7 +195,34 @@ def run_pancreas_analysis():
     with redirect_stdout(log_stream):
         try:
             from tests.test_pancreas_endocrinogenesis import run_and_visualize_pancreas
-            image_path, timings = run_and_visualize_pancreas()
+
+            # Get kernel configuration from request data
+            request_data = request.get_json() or {}
+            kernel_type = request_data.get('kernel_type', 'exponential')
+            kernel_p = request_data.get('kernel_p', 1.5)
+            kernel_nu = request_data.get('kernel_nu', 1.0)
+            kernel_alpha = request_data.get('kernel_alpha', 1.0)
+            kernel_beta = request_data.get('kernel_beta', 1.0)
+            learn_kernel_beta = request_data.get('learn_kernel_beta', False)
+            k_adaptation_strategy = request_data.get('k_adaptation_strategy', 'off')
+            k_base = request_data.get('k_base', 20)
+            sampling_method = request_data.get('sampling_method', 'off')
+            target_size = request_data.get('target_size', 2000)
+            spatial_weight = request_data.get('spatial_weight', 0.7)
+
+            image_path, timings = run_and_visualize_pancreas(
+                kernel_type=kernel_type,
+                kernel_p=kernel_p,
+                kernel_nu=kernel_nu,
+                kernel_alpha=kernel_alpha,
+                kernel_beta=kernel_beta,
+                learn_kernel_beta=learn_kernel_beta,
+                k_adaptation_strategy=k_adaptation_strategy,
+                k_base=k_base,
+                sampling_method=sampling_method,
+                target_size=target_size,
+                spatial_weight=spatial_weight,
+            )
         except Exception as e:
             error_message = f"Analysis failed: {str(e)}"
             print(error_message)
@@ -189,13 +266,63 @@ def streaming_demo():
 def streaming_data():
     """
     Server-Sent Events endpoint for real-time streaming data.
+    
+    Query Parameters:
+        kernel_type: 'exponential' (default) or 'gaussian'
+            - 'exponential': K = exp(-d / (2σ²)) - linear distance decay, empirically effective
+            - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay, standard RBF
     """
     global streaming_simulator, streaming_algorithm
     
+    # Get kernel configuration from query parameters
+    kernel_type = request.args.get('kernel_type', 'exponential')
+    kernel_p_raw = request.args.get('kernel_p', None)
+    kernel_nu_raw = request.args.get('kernel_nu', None)
+    kernel_alpha_raw = request.args.get('kernel_alpha', None)
+    kernel_beta_raw = request.args.get('kernel_beta', None)
+    learn_kernel_beta_raw = request.args.get('learn_kernel_beta', None)
+
+    # Parse numeric kernel parameters (optional)
+    try:
+        kernel_p = float(kernel_p_raw) if kernel_p_raw is not None else 1.5
+    except Exception:
+        kernel_p = 1.5
+    try:
+        kernel_nu = float(kernel_nu_raw) if kernel_nu_raw is not None else 1.0
+    except Exception:
+        kernel_nu = 1.0
+    try:
+        kernel_alpha = float(kernel_alpha_raw) if kernel_alpha_raw is not None else 1.0
+    except Exception:
+        kernel_alpha = 1.0
+    try:
+        kernel_beta = float(kernel_beta_raw) if kernel_beta_raw is not None else 1.0
+    except Exception:
+        kernel_beta = 1.0
+
+    if learn_kernel_beta_raw is None:
+        learn_kernel_beta = False
+    else:
+        learn_kernel_beta = str(learn_kernel_beta_raw).strip().lower() in ('1', 'true', 'yes', 'on')
+
+    valid_kernel_types = ('exponential', 'gaussian', 'generalized', 'student_t', 'rational_quadratic')
+    if kernel_type not in valid_kernel_types:
+        kernel_type = 'exponential'
+    
     def generate():
-        # Initialize simulator and algorithm
+        # Initialize simulator and algorithm with selected kernel configuration
         simulator = StreamingSensorSimulator(n_sensors=6, update_interval=0.1)
-        algorithm = NormalizedDynamicsOptimized(dim=2, max_iter=10, device='cpu')
+        algorithm = NormalizedDynamicsOptimized(
+            dim=2,
+            max_iter=10,
+            device='cpu',
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
         
         point_count = 0
         
@@ -326,8 +453,21 @@ def run_biological_metrics():
         
         dataset = request.json.get('dataset', 'pancreas') if request.json else 'pancreas'
         demo_mode = request.json.get('demo_mode', True) if request.json else True  # Default to demo mode
+        kernel_type = request.json.get('kernel_type', 'exponential') if request.json else 'exponential'
+        kernel_p = request.json.get('kernel_p', 1.5) if request.json else 1.5
+        kernel_nu = request.json.get('kernel_nu', 1.0) if request.json else 1.0
+        kernel_alpha = request.json.get('kernel_alpha', 1.0) if request.json else 1.0
+        kernel_beta = request.json.get('kernel_beta', 1.0) if request.json else 1.0
+        learn_kernel_beta = request.json.get('learn_kernel_beta', False) if request.json else False
+        k_adaptation_strategy = request.json.get('k_adaptation_strategy', 'off') if request.json else 'off'
+        k_base = request.json.get('k_base', 20) if request.json else 20
+        sampling_method = request.json.get('sampling_method', 'off') if request.json else 'off'
+        target_size = request.json.get('target_size', 2000) if request.json else 2000
+        spatial_weight = request.json.get('spatial_weight', 0.7) if request.json else 0.7
+        selected_algorithms = request.json.get('algorithms', None) if request.json else None
         print(f"Running analysis for dataset: {dataset}")
-        print(f"Computation mode: {'🚀 Fast Demo Mode' if demo_mode else '🔬 Full Scientific Mode'}")
+        print(f"Computation mode: {'Fast demo mode' if demo_mode else 'Full scientific mode'}")
+        print(f"Kernel type: {kernel_type}")
         
         # Validate dataset choice
         if dataset not in ['pancreas', 'synthetic', 'bodenmiller']:
@@ -362,10 +502,40 @@ def run_biological_metrics():
                 print("Executing enhanced biological metrics comparison...")
                 if dataset == 'synthetic':
                     print("Using synthetic benchmark dataset...")
-                    results, embeddings, image_path = run_enhanced_biological_metrics_comparison(use_synthetic=True, demo_mode=demo_mode)
+                    results, embeddings, image_path = run_enhanced_biological_metrics_comparison(
+                        use_synthetic=True,
+                        demo_mode=demo_mode,
+                        kernel_type=kernel_type,
+                        kernel_p=kernel_p,
+                        kernel_nu=kernel_nu,
+                        kernel_alpha=kernel_alpha,
+                        kernel_beta=kernel_beta,
+                        learn_kernel_beta=learn_kernel_beta,
+                        k_adaptation_strategy=k_adaptation_strategy,
+                        k_base=k_base,
+                        sampling_method=sampling_method,
+                        target_size=target_size,
+                        spatial_weight=spatial_weight,
+                        selected_algorithms=selected_algorithms,
+                    )
                 else:  # pancreas
                     print("Using real pancreas endocrinogenesis dataset...")
-                    results, embeddings, image_path = run_enhanced_biological_metrics_comparison(use_synthetic=False, demo_mode=demo_mode)
+                    results, embeddings, image_path = run_enhanced_biological_metrics_comparison(
+                        use_synthetic=False,
+                        demo_mode=demo_mode,
+                        kernel_type=kernel_type,
+                        kernel_p=kernel_p,
+                        kernel_nu=kernel_nu,
+                        kernel_alpha=kernel_alpha,
+                        kernel_beta=kernel_beta,
+                        learn_kernel_beta=learn_kernel_beta,
+                        k_adaptation_strategy=k_adaptation_strategy,
+                        k_base=k_base,
+                        sampling_method=sampling_method,
+                        target_size=target_size,
+                        spatial_weight=spatial_weight,
+                        selected_algorithms=selected_algorithms,
+                    )
             else:
                 if dataset == 'synthetic':
                     print("Synthetic dataset not supported in standard metrics - using pancreas data...")
@@ -471,7 +641,20 @@ def run_synthetic_developmental():
         from tests.synthetic_developmental_datasets import create_all_synthetic_datasets
         
         dataset_name = request.json.get('dataset', 'hematopoietic') if request.json else 'hematopoietic'
+        kernel_type = request.json.get('kernel_type', 'exponential') if request.json else 'exponential'
+        kernel_p = request.json.get('kernel_p', 1.5) if request.json else 1.5
+        kernel_nu = request.json.get('kernel_nu', 1.0) if request.json else 1.0
+        kernel_alpha = request.json.get('kernel_alpha', 1.0) if request.json else 1.0
+        kernel_beta = request.json.get('kernel_beta', 1.0) if request.json else 1.0
+        learn_kernel_beta = request.json.get('learn_kernel_beta', False) if request.json else False
+        k_adaptation_strategy = request.json.get('k_adaptation_strategy', 'off') if request.json else 'off'
+        k_base = request.json.get('k_base', 20) if request.json else 20
+        sampling_method = request.json.get('sampling_method', 'off') if request.json else 'off'
+        target_size = request.json.get('target_size', 2000) if request.json else 2000
+        spatial_weight = request.json.get('spatial_weight', 0.7) if request.json else 0.7
+        selected_algorithms = request.json.get('algorithms', None) if request.json else None
         print(f"Running analysis for dataset: {dataset_name}")
+        print(f"Kernel type: {kernel_type}")
         
         # Initialize progress tracking
         global analysis_progress
@@ -532,8 +715,20 @@ def run_synthetic_developmental():
             
             print(f"Executing synthetic developmental comparison for {dataset_name}...")
             results, embeddings, image_path = run_synthetic_developmental_comparison(
-                datasets=selected_datasets, 
-                save_results=True
+                datasets=selected_datasets,
+                save_results=True,
+                kernel_type=kernel_type,
+                kernel_p=kernel_p,
+                kernel_nu=kernel_nu,
+                kernel_alpha=kernel_alpha,
+                kernel_beta=kernel_beta,
+                learn_kernel_beta=learn_kernel_beta,
+                k_adaptation_strategy=k_adaptation_strategy,
+                k_base=k_base,
+                sampling_method=sampling_method,
+                target_size=target_size,
+                spatial_weight=spatial_weight,
+                selected_algorithms=selected_algorithms,
             )
             print("Synthetic analysis completed successfully.")
         
@@ -753,6 +948,132 @@ def run_smart_sampling_quick_test():
         }), 500
 
 
+@app.route('/api/smart_sampling/run', methods=['POST'])
+def run_smart_sampling_run():
+    """
+    Run smart sampling analysis with user-selected settings.
+    """
+    try:
+        request_data = request.get_json(silent=True) or {}
+        sampling_method = request_data.get('sampling_method', 'off')
+        target_size = int(request_data.get('target_size', 2000))
+        spatial_weight = float(request_data.get('spatial_weight', 0.7))
+
+        print("[ROCKET] Running smart sampling analysis (configured)...")
+
+        # Initialize progress tracking
+        global analysis_progress
+        analysis_progress = {
+            'status': 'running',
+            'messages': [],
+            'current_message': 'Starting smart sampling analysis...',
+            'start_time': time.time()
+        }
+
+        # Create a custom stdout capture that also updates progress
+        log_stream = io.StringIO()
+
+        class ProgressStream:
+            def __init__(self, original_stream, log_stream):
+                self.original_stream = original_stream
+                self.log_stream = log_stream
+                self.buffer = ""
+
+            def write(self, data):
+                global analysis_progress
+                self.original_stream.write(data)
+                self.log_stream.write(data)
+
+                # Update progress with new lines
+                self.buffer += data
+                while '\n' in self.buffer:
+                    line, self.buffer = self.buffer.split('\n', 1)
+                    if line.strip():
+                        analysis_progress['messages'].append(line.strip())
+                        analysis_progress['current_message'] = line.strip()
+                        if len(analysis_progress['messages']) > 1000:
+                            analysis_progress['messages'] = analysis_progress['messages'][-1000:]
+
+                self.original_stream.flush()
+                self.log_stream.flush()
+
+            def flush(self):
+                self.original_stream.flush()
+                self.log_stream.flush()
+
+        progress_stream = ProgressStream(sys.stdout, log_stream)
+
+        with redirect_stdout(progress_stream):
+            from tests.smart_sampling_enhanced_analysis import run_smart_sampling_analysis
+
+            run_smart_sampling_analysis(
+                sampling_method=sampling_method,
+                target_size=target_size,
+                spatial_weight=spatial_weight,
+            )
+
+        output = log_stream.getvalue()
+
+        # Update progress status to completed
+        analysis_progress['status'] = 'completed'
+        analysis_progress['current_message'] = 'Smart sampling analysis completed!'
+
+        # Find the latest generated visualization files (same logic as /latest)
+        results_dir = os.path.join('static', 'results')
+        visualization_files = []
+
+        if os.path.exists(results_dir):
+            for filename in os.listdir(results_dir):
+                if filename.startswith('smart_sampling_') and filename.endswith('.png'):
+                    visualization_files.append(filename)
+
+        visualization_files.sort(
+            key=lambda f: os.path.getmtime(os.path.join(results_dir, f)),
+            reverse=True
+        )
+
+        latest_analysis = None
+        latest_performance = None
+        latest_comparison = None
+
+        for filename in visualization_files:
+            if 'enhanced_analysis_' in filename and latest_analysis is None:
+                latest_analysis = filename
+            elif 'performance_chart_' in filename and latest_performance is None:
+                latest_performance = filename
+            elif 'comparison_' in filename and latest_comparison is None:
+                latest_comparison = filename
+
+        analysis_chart = latest_analysis or latest_comparison
+        performance_chart = latest_performance
+
+        return jsonify({
+            'status': 'success',
+            'output': output,
+            'visualizations': {
+                'analysis_chart': f'results/{analysis_chart}' if analysis_chart else None,
+                'performance_chart': f'results/{performance_chart}' if performance_chart else None
+            },
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        })
+
+    except Exception as e:
+        print(f"Error in smart sampling configured run: {e}")
+        import traceback
+        traceback.print_exc()
+
+        # Update progress status to error
+        analysis_progress['status'] = 'error'
+        analysis_progress['current_message'] = f'Error: {str(e)}'
+
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'output': traceback.format_exc(),
+            'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
+        }), 500
+
+
 @app.route('/api/smart_sampling/latest', methods=['GET'])
 def get_latest_smart_sampling_results():
     """
@@ -830,13 +1151,36 @@ def run_mouse_brain_cortical():
         n_layers = request_data.get('n_layers', 5)
         algorithms = request_data.get('algorithms', ['normdyn', 'tsne', 'umap'])
         metrics = request_data.get('metrics', ['gradient', 'continuity', 'boundaries', 'ordering'])
-        
-        print(f"Parameters: dataset={dataset}, n_cells={n_cells}, n_layers={n_layers}")
+        kernel_type = request_data.get('kernel_type', 'exponential')
+        kernel_p = request_data.get('kernel_p', 1.5)
+        kernel_nu = request_data.get('kernel_nu', 1.0)
+        kernel_alpha = request_data.get('kernel_alpha', 1.0)
+        kernel_beta = request_data.get('kernel_beta', 1.0)
+        learn_kernel_beta = request_data.get('learn_kernel_beta', False)
+        k_adaptation_strategy = request_data.get('k_adaptation_strategy', 'off')
+        k_base = request_data.get('k_base', 20)
+        sampling_method = request_data.get('sampling_method', 'off')
+        target_size = request_data.get('target_size', 2000)
+        spatial_weight = request_data.get('spatial_weight', 0.7)
+
+        print(f"Parameters: dataset={dataset}, n_cells={n_cells}, n_layers={n_layers}, kernel_type={kernel_type}")
         print(f"Algorithms: {algorithms}")
         print(f"Metrics: {metrics}")
         
         # Run the analysis
-        image_path, results, metadata = run_and_visualize_mouse_brain_cortical()
+        image_path, results, metadata = run_and_visualize_mouse_brain_cortical(
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+            k_adaptation_strategy=k_adaptation_strategy,
+            k_base=k_base,
+            sampling_method=sampling_method,
+            target_size=target_size,
+            spatial_weight=spatial_weight,
+        )
         
         # Extract image filename for response
         image_filename = os.path.basename(image_path) if image_path else None

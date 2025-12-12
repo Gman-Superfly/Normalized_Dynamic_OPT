@@ -28,6 +28,9 @@ from enhanced_biological_metrics import EnhancedBiologicalMetrics, create_synthe
 from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+from src.diffusion_maps import DiffusionMaps
 
 # Check for optional dependencies
 try:
@@ -69,20 +72,40 @@ def load_pancreas_data_enhanced():
         raise RuntimeError(f"Failed to load real pancreas data: {e}")
 
 
-def run_enhanced_biological_metrics_comparison(use_synthetic: bool = False, demo_mode: bool = False):
+def run_enhanced_biological_metrics_comparison(
+    use_synthetic: bool = False,
+    demo_mode: bool = False,
+    kernel_type: str = 'exponential',
+    kernel_p: float = 1.5,
+    kernel_nu: float = 1.0,
+    kernel_alpha: float = 1.0,
+    kernel_beta: float = 1.0,
+    learn_kernel_beta: bool = False,
+    k_adaptation_strategy: str = 'off',
+    k_base: int = 20,
+    sampling_method: str = 'off',
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+    selected_algorithms: list[str] | None = None,
+):
     """
     Run enhanced biological metrics comparison optimized for publication results.
-    
+
     Args:
         use_synthetic: Whether to use synthetic data instead of real pancreas data
+        demo_mode: Whether to run in fast demo mode
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
         demo_mode: If True, uses faster simple pseudotime for better demo performance
     """
     print("="*60)
     print("ENHANCED BIOLOGICAL METRICS ANALYSIS")
     if demo_mode:
-        print("🚀 DEMO MODE: Using optimized fast pseudotime calculation")
+        print("DEMO MODE: Using optimized fast pseudotime calculation")
     else:
-        print("🔬 FULL MODE: Using rigorous DPT pseudotime calculation")
+        print("FULL MODE: Using rigorous DPT pseudotime calculation")
     print("="*60)
     
     # Initialize enhanced metrics
@@ -114,30 +137,114 @@ def run_enhanced_biological_metrics_comparison(use_synthetic: bool = False, demo
     print(f"\nStandardizing gene expression data...")
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
+
+    # Optional smart sampling (most datasets here have no spatial coords; spatial/hybrid fall back to expression)
+    if sampling_method != 'off':
+        from src.smart_sampling import select_sample_indices
+        indices = select_sample_indices(
+            data=X_scaled,
+            method=str(sampling_method),
+            target_size=int(target_size),
+            spatial_coords=None,
+            spatial_weight=float(spatial_weight),
+            random_state=42,
+        )
+        X_scaled = X_scaled[indices]
+        X = X[indices]
+        cell_types = cell_types[indices]
+        print(f"Smart sampling applied: method={sampling_method}, final shape={X_scaled.shape}")
     
     # Algorithm configurations
-    algorithms = {
-        'NormalizedDynamics': {
+    # Select algorithm variant based on k_adaptation_strategy
+    if k_adaptation_strategy != 'off':
+        from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+        k_base_value = int(k_base) if k_adaptation_strategy == 'fixed' else None
+        normdyn_entry = {
+            'class': NormalizedDynamicsSmartK,
+            'params': {
+                'dim': 2,
+                'k_base': k_base_value,
+                'k_adaptation_strategy': k_adaptation_strategy,
+                'max_iter': 30,
+                'adaptive_params': True,
+                'kernel_type': kernel_type,
+                'kernel_p': kernel_p,
+                'kernel_nu': kernel_nu,
+                'kernel_alpha': kernel_alpha,
+                'kernel_beta': kernel_beta,
+                'learn_kernel_beta': learn_kernel_beta,
+                'device': 'cuda' if HAS_TORCH and torch.cuda.is_available() else 'cpu'
+            },
+            'description': 'NormalizedDynamics with adaptive K (SmartK)'
+        }
+    else:
+        normdyn_entry = {
             'class': NormalizedDynamicsOptimized,
             'params': {
                 'dim': 2,
                 'k': 20,
                 'max_iter': 30,
                 'adaptive_params': True,
+                'kernel_type': kernel_type,
+                'kernel_p': kernel_p,
+                'kernel_nu': kernel_nu,
+                'kernel_alpha': kernel_alpha,
+                'kernel_beta': kernel_beta,
+                'learn_kernel_beta': learn_kernel_beta,
                 'device': 'cuda' if HAS_TORCH and torch.cuda.is_available() else 'cpu'
             },
-            'description': 'Our novel method with adaptive parameters'
-        },
-        't-SNE': {
-            'class': TSNE,
-            'params': {
-                'n_components': 2,
-                'random_state': 42,
-                'max_iter': 1000,
-                'perplexity': min(30, len(X_scaled)//4)
-            },
-            'description': 'Standard t-SNE with optimized perplexity'
+            'description': 'NormalizedDynamics (fixed K)'
         }
+
+    # Map UI keys to human-readable algorithm names.
+    ui_to_display = {
+        'normdyn': 'NormalizedDynamics',
+        'tsne': 't-SNE',
+        'umap': 'UMAP',
+        'pca': 'PCA',
+        'diffmap': 'Diffusion Maps',
+    }
+
+    selected = None
+    if selected_algorithms:
+        selected = []
+        for key in selected_algorithms:
+            key_norm = str(key).strip().lower()
+            if key_norm in ui_to_display:
+                selected.append(ui_to_display[key_norm])
+
+    algorithms = {}
+    algorithms['NormalizedDynamics'] = normdyn_entry
+
+    algorithms['t-SNE'] = {
+        'class': TSNE,
+        'params': {
+            'n_components': 2,
+            'random_state': 42,
+            'max_iter': 1000,
+            'perplexity': min(30, len(X_scaled)//4)
+        },
+        'description': 'Standard t-SNE with optimized perplexity'
+    }
+
+    algorithms['PCA'] = {
+        'class': PCA,
+        'params': {
+            'n_components': 2,
+            'random_state': 42,
+        },
+        'description': 'PCA linear baseline'
+    }
+
+    algorithms['Diffusion Maps'] = {
+        'class': DiffusionMaps,
+        'params': {
+            'n_components': 2,
+            'n_neighbors': min(30, max(10, len(X_scaled)//10)),
+            'alpha': 0.5,
+            't': 1,
+        },
+        'description': 'Diffusion Maps manifold learning baseline'
     }
     
     if HAS_UMAP:
@@ -152,6 +259,11 @@ def run_enhanced_biological_metrics_comparison(use_synthetic: bool = False, demo
             'description': 'UMAP with standard parameters'
         }
     
+    if selected is not None:
+        algorithms = {name: cfg for name, cfg in algorithms.items() if name in set(selected)}
+        if not algorithms:
+            algorithms = {'NormalizedDynamics': normdyn_entry}
+
     print(f"\nRunning {len(algorithms)} algorithms...")
     
     # Results storage
@@ -226,7 +338,7 @@ def run_enhanced_biological_metrics_comparison(use_synthetic: bool = False, demo
             print(f"Total time (embedding + evaluation): {runtime + eval_time:.1f}s")
             
         except Exception as e:
-            print(f"❌ Algorithm failed: {e}")
+            print(f"Algorithm failed: {e}")
             results[alg_name] = None
     
     # Create enhanced visualization
@@ -244,18 +356,21 @@ def create_enhanced_publication_visualization(embeddings, results, cell_types, d
     
     # Set up the figure with publication quality
     plt.style.use('default')
-    fig = plt.figure(figsize=(20, 12))
+    n_algorithms = len(embeddings)
+    fig = plt.figure(figsize=(max(16, 4 * n_algorithms), 12))
     
     # Color palette for cell types
     unique_types = np.unique(cell_types)
     colors = plt.cm.Set3(np.linspace(0, 1, len(unique_types)))
     color_map = dict(zip(unique_types, colors))
-    
-    n_algorithms = len(embeddings)
-    
+
+    # Use a gridspec so the metrics panel spans the full bottom row.
+    import matplotlib.gridspec as gridspec
+    gs = gridspec.GridSpec(2, n_algorithms, figure=fig, height_ratios=[2, 1])
+
     # Top row: Embeddings
     for i, (alg_name, embedding) in enumerate(embeddings.items()):
-        ax = plt.subplot(2, n_algorithms, i + 1)
+        ax = fig.add_subplot(gs[0, i])
         
         # Plot embedding colored by cell type
         for cell_type in unique_types:
@@ -271,7 +386,7 @@ def create_enhanced_publication_visualization(embeddings, results, cell_types, d
             plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
     
     # Bottom row: Metrics comparison
-    ax_metrics = plt.subplot(2, 1, 2)
+    ax_metrics = fig.add_subplot(gs[1, :])
     
     # Extract metrics for comparison
     alg_names = list(results.keys())
@@ -371,7 +486,7 @@ def print_enhanced_summary(results):
         )
         
         # Add star for best performer
-        star = " ⭐" if alg_name == sorted_results[0][0] else ""
+        star = " (best)" if alg_name == sorted_results[0][0] else ""
         
         # Format the values
         traj_smooth_str = f"{trajectory_smoothness:.3f}{star}"

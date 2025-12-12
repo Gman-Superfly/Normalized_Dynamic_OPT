@@ -212,7 +212,7 @@ def create_synthetic_cortical_data(n_cells=8000, n_genes=2000, n_layers=6):
         'cell_assignments': cell_assignments
     }
     
-    print(f"✅ Synthetic cortical data generated successfully")
+    print("Synthetic cortical data generated successfully")
     print(f"  Spatial coordinates: {spatial_coords.shape}")
     print(f"  Depth range: {depth_values.min():.3f} - {depth_values.max():.3f}")
     
@@ -425,7 +425,7 @@ def compute_cortical_layer_metrics(embedding, layer_assignments, spatial_coords,
 
 def run_cortical_analysis(algorithm, X, layer_assignments, spatial_coords, depth_values, algorithm_name):
     """Run analysis for a single algorithm."""
-    print(f"\n🧠 Running {algorithm_name} analysis...")
+    print(f"\nRunning {algorithm_name} analysis...")
     
     start_time = time.time()
     
@@ -448,7 +448,7 @@ def run_cortical_analysis(algorithm, X, layer_assignments, spatial_coords, depth
         
     except Exception as e:
         runtime = time.time() - start_time
-        print(f"  ❌ {algorithm_name} failed: {e}")
+        print(f"  {algorithm_name} failed: {e}")
         return {
             'embedding': None,
             'metrics': {},
@@ -540,10 +540,28 @@ def create_cortical_visualization(results, layer_assignments, depth_values, save
     return fig
 
 
-def run_and_visualize_mouse_brain_cortical():
+def run_and_visualize_mouse_brain_cortical(
+    kernel_type='exponential',
+    kernel_p=1.5,
+    kernel_nu=1.0,
+    kernel_alpha=1.0,
+    kernel_beta=1.0,
+    learn_kernel_beta: bool = False,
+    k_adaptation_strategy: str = 'off',
+    k_base: int = 20,
+    sampling_method: str = 'off',
+    target_size: int = 2000,
+    spatial_weight: float = 0.7,
+):
     """
     Main function to run the mouse brain cortical layers analysis.
     
+    Args:
+        kernel_type: Kernel function type.
+        kernel_p: Exponent p for kernel_type='generalized'.
+        kernel_nu: Degrees of freedom ν for kernel_type='student_t'.
+        kernel_alpha: Shape α for kernel_type='rational_quadratic'.
+
     This implements the "Mouse Brain Cortical Layers" golden standard test
     mentioned in the chat files with spatial gradient preservation metrics.
     """
@@ -558,6 +576,23 @@ def run_and_visualize_mouse_brain_cortical():
     )
     spatial_coords = metadata['spatial_coords']
     depth_values = metadata['depth_values']
+
+    # Optional smart sampling (this dataset has spatial_coords available)
+    if sampling_method != 'off':
+        from src.smart_sampling import select_sample_indices
+        indices = select_sample_indices(
+            data=X,
+            method=str(sampling_method),
+            target_size=int(target_size),
+            spatial_coords=spatial_coords,
+            spatial_weight=float(spatial_weight),
+            random_state=42,
+        )
+        X = X[indices]
+        layer_assignments = layer_assignments[indices]
+        spatial_coords = spatial_coords[indices]
+        depth_values = depth_values[indices]
+        print(f"Smart sampling applied: method={sampling_method}, final shape={X.shape}")
     
     # Standardize data
     print(f"\nStandardizing expression data...")
@@ -566,10 +601,38 @@ def run_and_visualize_mouse_brain_cortical():
     print(f"Data shape: {X_scaled.shape}")
     
     # Initialize algorithms
+    if k_adaptation_strategy != 'off':
+        from src.normalized_dynamics_smart_k import NormalizedDynamicsSmartK
+        k_base_value = int(k_base) if k_adaptation_strategy == 'fixed' else None
+        normdyn_model = NormalizedDynamicsSmartK(
+            dim=2,
+            k_base=k_base_value,
+            max_iter=30,
+            adaptive_params=True,
+            device='cpu',
+            k_adaptation_strategy=k_adaptation_strategy,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+    else:
+        normdyn_model = NormalizedDynamicsOptimized(
+            dim=2,
+            max_iter=30,
+            adaptive_params=True,
+            kernel_type=kernel_type,
+            kernel_p=kernel_p,
+            kernel_nu=kernel_nu,
+            kernel_alpha=kernel_alpha,
+            kernel_beta=kernel_beta,
+            learn_kernel_beta=learn_kernel_beta,
+        )
+
     algorithms = {
-        'NormalizedDynamics': NormalizedDynamicsOptimized(
-            dim=2, max_iter=30, adaptive_params=True
-        ),
+        'NormalizedDynamics': normdyn_model,
         't-SNE': TSNE(
             n_components=2, random_state=42, max_iter=1000, 
             perplexity=min(30, len(X_scaled)//4)
@@ -616,7 +679,7 @@ def run_and_visualize_mouse_brain_cortical():
             print(f"{alg_name:<20} | {'FAILED':<12} | {'N/A':<15} | {'N/A':<15}")
     
     # Detailed analysis
-    print(f"\n📊 SPATIAL GRADIENT PRESERVATION ANALYSIS:")
+    print("\nSPATIAL GRADIENT PRESERVATION ANALYSIS:")
     
     best_spatial = max([r['metrics'].get('spatial_gradient_preservation', 0) 
                        for r in results.values() if r['success']])
@@ -626,16 +689,16 @@ def run_and_visualize_mouse_brain_cortical():
             metrics = result['metrics']
             spatial_score = metrics.get('spatial_gradient_preservation', 0)
             
-            print(f"\n🧠 {alg_name}:")
+            print(f"\n{alg_name}:")
             print(f"   • Spatial gradient preservation: {spatial_score:.3f}")
             print(f"   • Depth correlation: {metrics.get('depth_correlation', 0):.3f}")
             print(f"   • Layer separation (ARI): {metrics.get('layer_separation_ari', 0):.3f}")
             print(f"   • Layer ordering: {metrics.get('layer_ordering_correlation', 0):.3f}")
             
             if spatial_score == best_spatial:
-                print(f"   ⭐ BEST spatial gradient preservation!")
+                print("   Best spatial gradient preservation")
     
-    print(f"\n🎯 KEY FINDINGS:")
+    print("\nKEY FINDINGS:")
     print(f"   • This test validates spatial transcriptomics analysis capability")
     print(f"   • Spatial gradient preservation measures smooth layer transitions")
     print(f"   • Results show algorithm performance on anatomical structure preservation")
@@ -649,10 +712,10 @@ if __name__ == "__main__":
     # Run the analysis
     try:
         image_path, results, metadata = run_and_visualize_mouse_brain_cortical()
-        print(f"\n✅ Mouse brain cortical analysis completed successfully!")
-        print(f"📊 Results visualization: {image_path}")
+        print("\nMouse brain cortical analysis completed successfully")
+        print(f"Results visualization: {image_path}")
         
     except Exception as e:
-        print(f"\n❌ Analysis failed: {e}")
+        print(f"\nAnalysis failed: {e}")
         import traceback
         traceback.print_exc() 

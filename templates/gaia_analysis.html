@@ -14,14 +14,14 @@
     
     <!-- Navigation -->
     <nav>
-        <a href="/">🍷 Wine Analysis</a>
-        <a href="/gaia-analysis" class="active">📊 GAIA Analysis</a>
-        <a href="/streaming-demo">🚀 Streaming Demo</a>
-        <a href="/pancreas-analysis">🧬 Single-Cell Analysis</a>
-        <a href="/biological-metrics">📈 Biological Metrics</a>
-        <a href="/synthetic-developmental">🧪 Synthetic Data</a>
-        <a href="/mouse-brain-cortical">🧠 Brain Cortical</a>
-        <a href="/smart-sampling">🧠 Smart Sampling</a>
+        <a href="/">Wine Analysis</a>
+        <a href="/gaia-analysis" class="active">GAIA Analysis</a>
+        <a href="/streaming-demo">Streaming Demo</a>
+        <a href="/pancreas-analysis">Single-Cell Analysis</a>
+        <a href="/biological-metrics">Biological Metrics</a>
+        <a href="/synthetic-developmental">Synthetic Data</a>
+        <a href="/mouse-brain-cortical">Brain Cortical</a>
+        <a href="/smart-sampling">Smart Sampling</a>
     </nav>
     
     <main>
@@ -45,6 +45,130 @@
                     <label for="size10000">10000 Samples (Slow & Accurate)</label>
                 </div>
             </fieldset>
+
+            <!-- Kernel Type Selection -->
+            <fieldset>
+                <legend>Algorithm Configuration</legend>
+                <div style="margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 10px;">Kernel Type</h4>
+                    <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                        Select the kernel function for distance weighting
+                    </p>
+                    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="exponential" checked id="kernel-exponential">
+                            <span><strong>Exponential</strong> (default)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="gaussian" id="kernel-gaussian">
+                            <span><strong>Gaussian</strong> (standard RBF)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="generalized" id="kernel-generalized">
+                            <span><strong>Generalized</strong> (p)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="student_t" id="kernel-student-t">
+                            <span><strong>Student-t</strong> (ν)</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="kernel_type" value="rational_quadratic" id="kernel-rational-quadratic">
+                            <span><strong>Rational quadratic</strong> (α)</span>
+                        </label>
+                    </div>
+                    <div id="kernel-param-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                        <label id="kernel-param-label" for="kernel-param" style="font-size: 12px; color: var(--border-color);">p</label>
+                        <input id="kernel-param" type="number" min="0.1" step="0.1" value="1.5" style="width: 100px;">
+                    </div>
+                    <div style="margin-top: 10px; display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <label for="kernel-beta" style="font-size: 12px; color: var(--border-color);">Slope β</label>
+                        <input id="kernel-beta" type="number" min="0.1" step="0.1" value="1.0" style="width: 100px;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input id="learn-kernel-beta" type="checkbox">
+                            <span style="font-size: 12px;">Auto-tune β</span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 11px; color: var(--border-color); text-align: center;">
+                        <div id="kernel-description">
+                            <strong>Exponential:</strong> K = exp(-d / (2σ²)) - Linear distance decay, empirically effective on biological data
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Smart sampling</legend>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Optional downsampling before analysis. Off uses the selected dataset size.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="off" checked>
+                        <span><strong>Off</strong> (default)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="random">
+                        <span><strong>Random</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="expression">
+                        <span><strong>Expression</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="spatial">
+                        <span><strong>Spatial</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="sampling_method" value="hybrid">
+                        <span><strong>Hybrid</strong></span>
+                    </label>
+                </div>
+                <div id="sampling-target-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="sampling-target-size" style="font-size: 12px; color: var(--border-color);">Target size</label>
+                    <input id="sampling-target-size" type="number" min="100" step="100" value="2000" style="width: 120px;">
+                </div>
+                <div id="sampling-hybrid-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="sampling-spatial-weight" style="font-size: 12px; color: var(--border-color);">Hybrid spatial weight</label>
+                    <input id="sampling-spatial-weight" type="number" min="0" max="1" step="0.05" value="0.7" style="width: 120px;">
+                </div>
+                <p style="font-size: 11px; color: var(--border-color); text-align: center; margin-top: 8px;">
+                    Note: GAIA has no spatial coordinates, Spatial and Hybrid fall back to Expression sampling.
+                </p>
+            </fieldset>
+
+            <fieldset>
+                <legend>K adaptation (SmartK)</legend>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Controls how the neighbor count K is chosen during bandwidth selection.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="off" checked>
+                        <span><strong>Off</strong> (default)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="fixed">
+                        <span><strong>Fixed</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="size">
+                        <span><strong>Size</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="density">
+                        <span><strong>Density</strong></span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="k_adaptation_strategy" value="smart">
+                        <span><strong>Smart</strong></span>
+                    </label>
+                </div>
+                <div id="k-base-container" style="margin-top: 10px; display: none; justify-content: center; gap: 10px; align-items: center;">
+                    <label for="k-base" style="font-size: 12px; color: var(--border-color);">Base K</label>
+                    <input id="k-base" type="number" min="2" step="1" value="20" style="width: 100px;">
+                </div>
+            </fieldset>
+
             <button id="run-analysis-btn">Run GAIA Analysis</button>
         </div>
         <div id="results-container">

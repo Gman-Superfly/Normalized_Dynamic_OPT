@@ -28,7 +28,44 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
     """
     
     def __init__(self, dim=2, k=20, alpha=1.0, max_iter=50, noise_scale=0.01, eta=0.01,
-                 target_local_structure=0.95, adaptive_params=True, device='cpu'):
+                 target_local_structure=0.95, adaptive_params=True, device='cpu',
+                 kernel_type='exponential',
+                 kernel_p=1.5,
+                 kernel_nu=1.0,
+                 kernel_alpha=1.0,
+                 kernel_beta=1.0,
+                 learn_kernel_beta=False,
+                 kernel_beta_eta=0.01):
+        """
+        Initialize NormalizedDynamicsOptimized.
+        
+        Args:
+            dim: Target embedding dimensions (default: 2)
+            k: Number of neighbors for bandwidth calculation (default: 20)
+            alpha: Step size parameter (default: 1.0)
+            max_iter: Maximum iterations (default: 50)
+            noise_scale: Stochastic noise amplitude (default: 0.01)
+            eta: Learning rate for adaptive updates (default: 0.01)
+            target_local_structure: Target for adaptive stopping (default: 0.95)
+            adaptive_params: Enable adaptive parameter adjustment (default: True)
+            device: Computation device 'cpu' or 'cuda' (default: 'cpu')
+            kernel_type: Kernel function type (default: 'exponential')
+                - 'exponential': K = exp(-d / (2σ²)) - linear distance decay, empirically effective
+                - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay, standard RBF
+                - 'generalized': K = exp(-(d^p) / (2σ²)) - generalized exponential family
+                - 'student_t': K = (1 + d²/(νσ²))^(-(ν+1)/2) - heavy-tailed Student-t kernel
+                - 'rational_quadratic': K = (1 + d²/(2ασ²))^(-α) - Gaussian scale mixture
+
+            kernel_p: Exponent p for kernel_type='generalized' (default: 1.5)
+            kernel_nu: Degrees of freedom ν for kernel_type='student_t' (default: 1.0)
+            kernel_alpha: Shape α for kernel_type='rational_quadratic' (default: 1.0)
+            kernel_beta: Kernel slope (scale) β that multiplies distance (default: 1.0)
+            learn_kernel_beta: If True, auto-tunes kernel_beta using local structure feedback (default: False)
+            kernel_beta_eta: Learning rate for kernel_beta updates (default: 0.01)
+
+            Note: The default remains the current 'exponential' kernel to preserve
+            existing empirical behavior. Other kernels are optional for experiments.
+        """
         super(NormalizedDynamicsOptimized, self).__init__()
         self.dim = dim
         self.k = k
@@ -39,6 +76,33 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
         self.target_local_structure = target_local_structure
         self.adaptive_params = adaptive_params
         self.device = device
+        self.kernel_type = kernel_type
+        self.kernel_p = float(kernel_p)
+        self.kernel_nu = float(kernel_nu)
+        self.kernel_alpha = float(kernel_alpha)
+        self.learn_kernel_beta = bool(learn_kernel_beta)
+        self.kernel_beta_eta = float(kernel_beta_eta)
+
+        if self.learn_kernel_beta and self.adaptive_params:
+            self.kernel_beta = torch.nn.Parameter(torch.tensor(float(kernel_beta)))
+        else:
+            self.kernel_beta = float(kernel_beta)
+        
+        # Validate kernel_type
+        valid_kernel_types = ('exponential', 'gaussian', 'generalized', 'student_t', 'rational_quadratic')
+        if kernel_type not in valid_kernel_types:
+            raise ValueError(
+                f"kernel_type must be one of {valid_kernel_types}, got '{kernel_type}'"
+            )
+
+        if self.kernel_p <= 0:
+            raise ValueError(f"kernel_p must be > 0, got {self.kernel_p}")
+        if self.kernel_nu <= 0:
+            raise ValueError(f"kernel_nu must be > 0, got {self.kernel_nu}")
+        if self.kernel_alpha <= 0:
+            raise ValueError(f"kernel_alpha must be > 0, got {self.kernel_alpha}")
+        if self.kernel_beta_eta <= 0:
+            raise ValueError(f"kernel_beta_eta must be > 0, got {self.kernel_beta_eta}")
         
         # Optimization tracking
         self.cost_history = []
@@ -78,8 +142,23 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
         sigma = kth_dists[:, -1].view(-1, 1)  # Adaptive bandwidth parameter
         
         # Global kernel computation with comprehensive connectivity
-        # Creates complete interaction matrix with adaptive bandwidth weighting
-        kernel = torch.exp(-dists / (2 * sigma**2 + 1e-8))
+        # Creates complete interaction matrix with adaptive bandwidth weighting.
+        eps = 1e-8
+        denom = (2 * sigma**2 + eps)
+        beta_val = self.kernel_beta if isinstance(self.kernel_beta, float) else self.kernel_beta.item()
+
+        if self.kernel_type == 'gaussian':
+            kernel = torch.exp(-(beta_val * (dists**2)) / denom)
+        elif self.kernel_type == 'exponential':
+            kernel = torch.exp(-(beta_val * dists) / denom)
+        elif self.kernel_type == 'generalized':
+            kernel = torch.exp(-(beta_val * (dists**self.kernel_p)) / denom)
+        elif self.kernel_type == 'student_t':
+            kernel = (1.0 + (beta_val * (dists**2)) / (self.kernel_nu * sigma**2 + eps)) ** (-(self.kernel_nu + 1.0) / 2.0)
+        elif self.kernel_type == 'rational_quadratic':
+            kernel = (1.0 + (beta_val * (dists**2)) / (2.0 * self.kernel_alpha * sigma**2 + eps)) ** (-self.kernel_alpha)
+        else:
+            raise ValueError(f"Unhandled kernel_type: {self.kernel_type}")
         kernel = kernel / (torch.sum(kernel, dim=1, keepdim=True) + 1e-8)
         
         # Comprehensive drift calculation with global information integration
@@ -162,6 +241,14 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
                         with torch.no_grad():
                             self.alpha += self.eta * error
                             self.alpha.clamp_(0.01, 2.0)  # Reasonable bounds
+
+                    # Adaptive kernel_beta adjustment (kernel slope auto-tuning)
+                    if self.learn_kernel_beta and isinstance(self.kernel_beta, torch.nn.Parameter):
+                        error = self.target_local_structure - metrics['local_structure']
+                        with torch.no_grad():
+                            # Higher beta makes the kernel decay faster with distance (more local)
+                            self.kernel_beta += self.kernel_beta_eta * error
+                            self.kernel_beta.clamp_(0.1, 10.0)
                     
                     # Early stopping (OPTIMIZATION)
                     if iteration > 10:
@@ -291,13 +378,22 @@ def compute_metrics_optimized(original, embedded):
 class NormalizedDynamicsCorrected(torch.nn.Module):
     """
     Corrected version of the original NormalizedDynamics with proper implementation.
+    
+    Args:
+        dim: Target embedding dimensions (default: 2)
+        alpha: Step size parameter (default: 1.0)
+        max_iter: Maximum iterations (default: 50)
+        kernel_type: Kernel function type (default: 'exponential')
+            - 'exponential': K = exp(-d / (2σ²)) - linear distance decay
+            - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay (standard RBF)
     """
     
-    def __init__(self, dim=2, alpha=1.0, max_iter=50):
+    def __init__(self, dim=2, alpha=1.0, max_iter=50, kernel_type='exponential'):
         super().__init__()
         self.dim = dim
         self.alpha = alpha
         self.max_iter = max_iter
+        self.kernel_type = kernel_type
 
     def forward(self, x):
         # CORRECTED implementation based on discussion document
@@ -312,7 +408,11 @@ class NormalizedDynamicsCorrected(torch.nn.Module):
         kth_dists, _ = torch.topk(dists, k, dim=1, largest=False)
         sigma = kth_dists[:, -1].view(-1, 1)
 
-        kernel = torch.exp(-dists / (2 * sigma**2))
+        # Kernel computation with configurable type
+        if self.kernel_type == 'gaussian':
+            kernel = torch.exp(-dists**2 / (2 * sigma**2 + 1e-8))
+        else:  # 'exponential' (default)
+            kernel = torch.exp(-dists / (2 * sigma**2 + 1e-8))
         kernel = kernel / torch.sum(kernel, dim=1, keepdim=True)
 
         drift = torch.matmul(kernel, x_centered)
