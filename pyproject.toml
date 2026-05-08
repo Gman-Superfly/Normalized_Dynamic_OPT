@@ -1,0 +1,23 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["src"]
+addopts = "-v"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [
+  "docs/NormalizedDynamics_OG_Technical_Documentation_deprecated_FEB_2025.py",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["tests/"]

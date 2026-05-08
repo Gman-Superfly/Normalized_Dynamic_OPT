@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from scipy.spatial.distance import cdist
+from typing import Dict, Tuple, Union
 
 class NormalizedDynamicsOptimized(torch.nn.Module):
     """
@@ -108,10 +109,12 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
         self.cost_history = []
         self.alpha_history = []
         
-    def forward(self, x):
-        """
-        Perform one iteration of the embedding update using the corrected algorithm.
-        """
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform one iteration of the embedding update."""
+        assert torch.is_tensor(x), f"x must be torch.Tensor, got {type(x)}"
+        assert x.ndim == 2, f"x must be 2D, got shape {tuple(x.shape)}"
+        assert x.shape[0] >= 2, f"x must have at least 2 rows, got {x.shape[0]}"
+        assert torch.isfinite(x).all(), "x contains non-finite values"
         # Store original statistics for scale preservation
         original_mean = torch.mean(x, dim=0, keepdim=True)
         original_std = torch.std(x, dim=0, keepdim=True)
@@ -182,25 +185,34 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
         
         return h
     
-    def compute_cost(self, original, embedded):
-        """
-        Compute cost function for optimization.
-        """
+    def compute_cost(
+        self,
+        original: np.ndarray,
+        embedded: np.ndarray,
+    ) -> Tuple[float, Dict[str, float]]:
+        """Compute the optimization cost and associated metrics."""
+        assert isinstance(original, np.ndarray), f"original must be np.ndarray, got {type(original)}"
+        assert isinstance(embedded, np.ndarray), f"embedded must be np.ndarray, got {type(embedded)}"
+        assert original.ndim == 2, f"original must be 2D, got shape {original.shape}"
+        assert embedded.ndim == 2, f"embedded must be 2D, got shape {embedded.shape}"
+        assert original.shape[0] == embedded.shape[0], "original and embedded row counts must match"
         try:
             metrics = compute_metrics_optimized(original, embedded)
             # Weighted cost: balance distortion and local structure
             cost = 0.3 * metrics['distortion'] + 0.7 * (1 - metrics['local_structure'])
             return cost, metrics
-        except:
+        except (ValueError, FloatingPointError, RuntimeError):
             return 1.0, {'distortion': 1.0, 'local_structure': 0.0}
     
-    def fit_transform(self, X):
-        """
-        Fit the model with optimizations: early stopping, adaptive parameters.
-        """
+    def fit_transform(self, X: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+        """Fit the model and return an embedding."""
+        assert X is not None, "X is required"
         # Convert input to PyTorch tensor and move to device
         if not torch.is_tensor(X):
             X = torch.tensor(X, dtype=torch.float32)
+        assert X.ndim == 2, f"X must be 2D, got shape {tuple(X.shape)}"
+        assert X.shape[0] >= 3, f"X must have at least 3 rows, got {X.shape[0]}"
+        assert torch.isfinite(X).all(), "X contains non-finite values"
         X = X.to(self.device)
         
         # Better initialization (OPTIMIZATION)
@@ -343,10 +355,15 @@ class NormalizedDynamicsOptimized(torch.nn.Module):
             del self.streaming_embedding
 
 
-def compute_metrics_optimized(original, embedded):
-    """
-    Optimized metrics computation with better numerical stability.
-    """
+def compute_metrics_optimized(original: np.ndarray, embedded: np.ndarray) -> Dict[str, float]:
+    """Compute distortion and neighborhood-preservation metrics."""
+    assert isinstance(original, np.ndarray), f"original must be np.ndarray, got {type(original)}"
+    assert isinstance(embedded, np.ndarray), f"embedded must be np.ndarray, got {type(embedded)}"
+    assert original.ndim == 2, f"original must be 2D, got shape {original.shape}"
+    assert embedded.ndim == 2, f"embedded must be 2D, got shape {embedded.shape}"
+    assert original.shape[0] == embedded.shape[0], "original and embedded row counts must match"
+    assert original.shape[0] >= 3, f"Need at least 3 samples, got {original.shape[0]}"
+
     # Normalize data for better comparison
     from sklearn.preprocessing import StandardScaler
     

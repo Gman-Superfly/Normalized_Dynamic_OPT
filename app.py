@@ -30,6 +30,25 @@ analysis_progress = {
     'start_time': None
 }
 
+
+def _get_nystrom_enabled(request_data):
+    """Return whether the experimental Nystrom approximation flag is enabled."""
+    if not request_data:
+        return False
+    raw_value = request_data.get('nystrom_enabled', False)
+    if isinstance(raw_value, bool):
+        return raw_value
+    return str(raw_value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _log_nystrom_status(nystrom_enabled):
+    """Log the current Nystrom approximation mode."""
+    if nystrom_enabled:
+        print("Nystrom approximation: requested, planned next-step mode. Full-kernel path still runs.")
+    else:
+        print("Nystrom approximation: off, using full-kernel path.")
+
+
 @app.route('/')
 def index():
     """
@@ -70,18 +89,20 @@ def run_analysis():
     """
     Runs the Gaia data analysis and returns the results, including logs.
     """
-    size = request.json.get('size', '500')
-    kernel_type = request.json.get('kernel_type', 'exponential')
-    kernel_p = request.json.get('kernel_p', 1.5)
-    kernel_nu = request.json.get('kernel_nu', 1.0)
-    kernel_alpha = request.json.get('kernel_alpha', 1.0)
-    kernel_beta = request.json.get('kernel_beta', 1.0)
-    learn_kernel_beta = request.json.get('learn_kernel_beta', False)
-    k_adaptation_strategy = request.json.get('k_adaptation_strategy', 'off')
-    k_base = request.json.get('k_base', 20)
-    sampling_method = request.json.get('sampling_method', 'off')
-    target_size = request.json.get('target_size', 2000)
-    spatial_weight = request.json.get('spatial_weight', 0.7)
+    request_data = request.get_json(silent=True) or {}
+    size = request_data.get('size', '500')
+    kernel_type = request_data.get('kernel_type', 'exponential')
+    kernel_p = request_data.get('kernel_p', 1.5)
+    kernel_nu = request_data.get('kernel_nu', 1.0)
+    kernel_alpha = request_data.get('kernel_alpha', 1.0)
+    kernel_beta = request_data.get('kernel_beta', 1.0)
+    learn_kernel_beta = request_data.get('learn_kernel_beta', False)
+    k_adaptation_strategy = request_data.get('k_adaptation_strategy', 'off')
+    k_base = request_data.get('k_base', 20)
+    sampling_method = request_data.get('sampling_method', 'off')
+    target_size = request_data.get('target_size', 2000)
+    spatial_weight = request_data.get('spatial_weight', 0.7)
+    nystrom_enabled = _get_nystrom_enabled(request_data)
     size_int = int(size)
 
     data_dir = "data"
@@ -90,6 +111,7 @@ def run_analysis():
 
     log_stream = io.StringIO()
     with redirect_stdout(log_stream):
+        _log_nystrom_status(nystrom_enabled)
         # Check if data exists, download if not
         if not os.path.exists(data_path):
             print(f"Data file '{data_path}' not found. Downloading...")
@@ -125,6 +147,7 @@ def run_analysis():
             'image_path': image_path.replace('static' + os.path.sep, '', 1), 
             'timings': timings,
             'sample_count': size,
+            'nystrom_enabled': nystrom_enabled,
             'logs': logs
         })
     else:
@@ -149,9 +172,11 @@ def run_wine_analysis():
     sampling_method = request_data.get('sampling_method', 'off')
     target_size = request_data.get('target_size', 150)
     spatial_weight = request_data.get('spatial_weight', 0.7)
+    nystrom_enabled = _get_nystrom_enabled(request_data)
 
     log_stream = io.StringIO()
     with redirect_stdout(log_stream):
+        _log_nystrom_status(nystrom_enabled)
         image_path, timings = run_and_visualize_wine(
             kernel_type=kernel_type,
             kernel_p=kernel_p,
@@ -180,6 +205,7 @@ def run_wine_analysis():
             'image_path': normalized_path,
             'timings': timings,
             'sample_count': '178',  # Wine dataset size
+            'nystrom_enabled': nystrom_enabled,
             'logs': logs
         })
     else:
@@ -209,6 +235,8 @@ def run_pancreas_analysis():
             sampling_method = request_data.get('sampling_method', 'off')
             target_size = request_data.get('target_size', 2000)
             spatial_weight = request_data.get('spatial_weight', 0.7)
+            nystrom_enabled = _get_nystrom_enabled(request_data)
+            _log_nystrom_status(nystrom_enabled)
 
             image_path, timings = run_and_visualize_pancreas(
                 kernel_type=kernel_type,
@@ -244,6 +272,7 @@ def run_pancreas_analysis():
             'image_path': clean_path, 
             'timings': timings,
             'sample_count': 'Single-Cell RNA-seq',
+            'nystrom_enabled': nystrom_enabled,
             'logs': logs
         })
     else:
@@ -465,9 +494,11 @@ def run_biological_metrics():
         target_size = request.json.get('target_size', 2000) if request.json else 2000
         spatial_weight = request.json.get('spatial_weight', 0.7) if request.json else 0.7
         selected_algorithms = request.json.get('algorithms', None) if request.json else None
+        nystrom_enabled = _get_nystrom_enabled(request.json)
         print(f"Running analysis for dataset: {dataset}")
         print(f"Computation mode: {'Fast demo mode' if demo_mode else 'Full scientific mode'}")
         print(f"Kernel type: {kernel_type}")
+        _log_nystrom_status(nystrom_enabled)
         
         # Validate dataset choice
         if dataset not in ['pancreas', 'synthetic', 'bodenmiller']:
@@ -588,6 +619,7 @@ def run_biological_metrics():
             'status': 'success',
             'results': formatted_results,
             'dataset': dataset,
+            'nystrom_enabled': nystrom_enabled,
             'output': output,
             'image_path': web_image_path,
             'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -653,8 +685,10 @@ def run_synthetic_developmental():
         target_size = request.json.get('target_size', 2000) if request.json else 2000
         spatial_weight = request.json.get('spatial_weight', 0.7) if request.json else 0.7
         selected_algorithms = request.json.get('algorithms', None) if request.json else None
+        nystrom_enabled = _get_nystrom_enabled(request.json)
         print(f"Running analysis for dataset: {dataset_name}")
         print(f"Kernel type: {kernel_type}")
+        _log_nystrom_status(nystrom_enabled)
         
         # Initialize progress tracking
         global analysis_progress
@@ -806,6 +840,7 @@ def run_synthetic_developmental():
             'ground_truth': ground_truth,
             'dataset_info': dataset_info_formatted,
             'dataset_name': dataset_name,
+            'nystrom_enabled': nystrom_enabled,
             'output': output,
             'image_path': f"results/{image_filename}" if image_filename else None,
             'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -1162,10 +1197,12 @@ def run_mouse_brain_cortical():
         sampling_method = request_data.get('sampling_method', 'off')
         target_size = request_data.get('target_size', 2000)
         spatial_weight = request_data.get('spatial_weight', 0.7)
+        nystrom_enabled = _get_nystrom_enabled(request_data)
 
         print(f"Parameters: dataset={dataset}, n_cells={n_cells}, n_layers={n_layers}, kernel_type={kernel_type}")
         print(f"Algorithms: {algorithms}")
         print(f"Metrics: {metrics}")
+        _log_nystrom_status(nystrom_enabled)
         
         # Run the analysis
         image_path, results, metadata = run_and_visualize_mouse_brain_cortical(
@@ -1210,6 +1247,7 @@ def run_mouse_brain_cortical():
                 'spatial_shape': str(metadata['spatial_coords'].shape),
                 'layer_counts': metadata['layer_counts']
             },
+            'nystrom_enabled': nystrom_enabled,
             'image_path': f"results/{image_filename}" if image_filename else None,
             'timestamp': time.strftime("%Y-%m-%d %H:%M:%S")
         })

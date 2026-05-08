@@ -152,6 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hybridContainer) hybridContainer.style.display = (method === 'hybrid') ? 'flex' : 'none';
     }
 
+    // Nystrom approximation helper. The backend currently records this request
+    // as an experimental setting; the numerical implementation is the next step.
+    function getNystromConfig() {
+        const selected = document.querySelector('input[name="nystrom_enabled"]:checked');
+        return { nystrom_enabled: selected ? selected.value === 'on' : false };
+    }
+
     function updateKernelUI(kernelType) {
         const descEl = document.getElementById('kernel-description');
         const paramContainer = document.getElementById('kernel-param-container');
@@ -212,7 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const kernelCfg = getKernelConfig();
             const smartKCfg = getSmartKConfig();
             const smartSamplingCfg = getSmartSamplingConfig();
-            runAnalysis('/run', { size: selectedSize, ...kernelCfg, ...smartKCfg, ...smartSamplingCfg }, runGaiaButton, 'Run Gaia Analysis');
+            const nystromCfg = getNystromConfig();
+            runAnalysis('/run', { size: selectedSize, ...kernelCfg, ...smartKCfg, ...smartSamplingCfg, ...nystromCfg }, runGaiaButton, 'Run Gaia Analysis');
         });
     }
 
@@ -222,7 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const kernelCfg = getKernelConfig();
             const smartKCfg = getSmartKConfig();
             const smartSamplingCfg = getSmartSamplingConfig();
-            runAnalysis('/run_wine', { ...kernelCfg, ...smartKCfg, ...smartSamplingCfg }, runWineButton, 'Run Wine Dataset Analysis');
+            const nystromCfg = getNystromConfig();
+            runAnalysis('/run_wine', { ...kernelCfg, ...smartKCfg, ...smartSamplingCfg, ...nystromCfg }, runWineButton, 'Run Wine Dataset Analysis');
         });
     }
 

@@ -1,10 +1,10 @@
-# Smart Sampling + Dynamic K: Algorithm Optimization 
+# Smart sampling + dynamic K: algorithm optimization
 
-## What We Accomplished
+## What we accomplished
 
 We successfully demonstrated that **the algorithm performs well** when paired with intelligent data curation and adaptive parameter optimization. One approach shows that NormalizedDynamics' strength emerges through **smart data preparation**, not just raw computational power.
 
-## The Enhancement Strategy
+## The enhancement strategy
 
 ### Problem identified
 - **Fixed K parameter** wasn't adapting to different dataset sizes and structures
@@ -24,7 +24,7 @@ We successfully demonstrated that **the algorithm performs well** when paired wi
    - Manifold curvature estimation
    - Real-time optimization during embedding
 
-## Key Results 📊
+## Key results
 
 ### Performance Improvements
 - **Hybrid Sampling**: 8.7% trajectory smoothness improvement
@@ -37,16 +37,16 @@ We successfully demonstrated that **the algorithm performs well** when paired wi
 - Assessment: Runtime trade-offs transparently reported
 - Biological relevance: Maintains cell type diversity and spatial structure
 
-## The Answer to "Should K be Dynamic?"
+## The answer to "Should K be dynamic?"
 
-**Yes, the results support this approach.** 
+**Yes, the current results support this approach.**
 
 Our results show **consistent improvements** across all scenarios:
 - **2000-cell datasets**: K automatically optimized to 26-28 range
 - **3000-cell datasets**: K automatically scaled to 35-36 range
 - **Real-time adaptation**: K adjusts based on local data characteristics
 
-## Scientific Impact
+## Scientific impact
 
 This work demonstrates that:
 
@@ -55,16 +55,16 @@ This work demonstrates that:
 3. **Smart sampling** preserves biological structure while enabling efficient analysis
 4. **Scientific integrity** is maintained through transparent methodology
 
-## Files Generated
+## Files generated
 
-- **📊 Results Documentation**: `SMART_SAMPLING_RESULTS.md` - Complete analysis results
-- **🧠 Smart K Implementation**: `src/normalized_dynamics_smart_k.py` - Dynamic K algorithm
-- **📈 Analysis Script**: `tests/smart_sampling_enhanced_analysis.py` - Comprehensive testing
-- **🖼️ Visualizations**: High-quality comparison charts and performance plots
+- Results documentation: `SMART_SAMPLING_RESULTS.md`
+- Smart K implementation: `src/normalized_dynamics_smart_k.py`
+- Analysis script: `tests/smart_sampling_enhanced_analysis.py`
+- Visualizations: comparison charts and performance plots
 
-## Bottom Line
+## Bottom line
 
-**The results show the algorithm performs better when given better data and adaptive parameters.** This is scientifically sound, completely transparent, and demonstrates useful algorithmic potential.
+**The results show the algorithm performs better with smarter sampling and adaptive parameters in this study setup.**
 
 The K parameter **benefits from being dynamic**, and the smart sampling + dynamic K combination improves NormalizedDynamics for biological trajectory analysis.
 

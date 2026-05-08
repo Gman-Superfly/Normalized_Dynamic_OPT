@@ -1,38 +1,46 @@
-import polars as pl
-from astroquery.gaia import Gaia
-import warnings
-from astropy.coordinates import SkyCoord
-import astropy.units as u
+from __future__ import annotations
+
 import os
+import warnings
+
+import astropy.units as u
+import polars as pl
+from astropy.coordinates import SkyCoord
+from astroquery.gaia import Gaia
 
 
-def download_gaia_subset(limit=500, filename="gaia_data_500.csv"):
-    """
-    Downloads and processes a subset of the Gaia DR3 dataset using a robust,
-    direct query that avoids complex table joins.
+class GaiaDownloadError(RuntimeError):
+    """Raised when Gaia query execution or parsing fails."""
 
-    This function queries the main gaia_source table to get parallax data,
-    which is then used to calculate distances. This is a more reliable method
-    than attempting to join external distance catalogs.
 
-    The query retrieves:
-    - RA, Dec, Parallax for coordinate conversion.
-    - bp_rp color index, a proxy for stellar temperature.
+class GaiaDataValidationError(ValueError):
+    """Raised when returned Gaia data fails validation."""
 
-    It then converts the spherical coordinates to 3D Cartesian coordinates
-    (x, y, z) before saving.
+
+def download_gaia_subset(limit: int = 500, filename: str = "gaia_data_500.csv") -> pl.DataFrame:
+    """Download a Gaia DR3 subset and write Cartesian coordinates to CSV.
 
     Args:
-        limit (int): The maximum number of stars to download.
-        filename (str): The name of the file to save the data to.
+        limit: Maximum number of stars requested from Gaia.
+        filename: Output CSV file name under the local data directory.
 
     Returns:
-        pl.DataFrame: A polars DataFrame containing the processed data.
-    """
-    print("Connecting to Gaia archive... This may take a moment.")
+        Processed table with x, y, z, bp_rp, and mag columns.
 
-    # This query is simplified to use parallax directly from the main source
-    # table, which is more robust and avoids the previous join errors.
+    Raises:
+        AssertionError: If input arguments have invalid types.
+        ValueError: If input values are invalid.
+        GaiaDownloadError: If Gaia query execution fails.
+        GaiaDataValidationError: If query output is empty or missing required columns.
+    """
+    assert isinstance(limit, int), f"limit must be int, got {type(limit)}"
+    assert isinstance(filename, str), f"filename must be str, got {type(filename)}"
+    if limit <= 0:
+        raise ValueError(f"limit must be > 0, got {limit}")
+    if filename.strip() == "":
+        raise ValueError("filename cannot be empty")
+
+    print("Connecting to Gaia archive, this may take a moment.")
     adql_query = f"""
     SELECT TOP {limit}
       s.ra, s.dec, s.parallax, s.bp_rp, s.phot_g_mean_mag as mag
@@ -40,63 +48,62 @@ def download_gaia_subset(limit=500, filename="gaia_data_500.csv"):
       gaiadr3.gaia_source AS s
     WHERE
       s.parallax IS NOT NULL
-      AND s.parallax > 0            -- Positive parallax is required for distance
-      AND s.parallax_over_error > 5 -- High-quality parallax measurement
-      AND s.bp_rp IS NOT NULL       -- Ensure color data exists
+      AND s.parallax > 0
+      AND s.parallax_over_error > 5
+      AND s.bp_rp IS NOT NULL
     ORDER BY
       s.random_index
     """
 
     try:
-        print("Executing query to fetch stellar data...")
+        print("Executing query to fetch stellar data.")
         job = Gaia.launch_job_async(adql_query)
         results = job.get_results()
-        # Convert astropy table directly to polars (avoiding pandas dependency)
-        data_dict = {col: results[col].data for col in results.colnames}
-        df = pl.DataFrame(data_dict)
-        print(f"Successfully downloaded data for {len(df)} stars.")
+    except Exception as exc:
+        raise GaiaDownloadError(f"Gaia query failed: {exc}") from exc
 
-        # Calculate distance from parallax (1/parallax_in_arcsec = distance_in_parsec)
-        # Parallax is in mas, so we divide by 1000 to get arcseconds.
-        df = df.with_columns((1000.0 / pl.col('parallax')).alias('distance_pc'))
+    data_dict = {col: results[col].data for col in results.colnames}
+    df = pl.DataFrame(data_dict)
+    if df.height == 0:
+        raise GaiaDataValidationError("Gaia query returned zero rows")
 
-        print("Converting coordinates and calculating 3D positions...")
-        # Use astropy to handle coordinate conversions
-        coords = SkyCoord(ra=df['ra'].to_numpy()*u.deg,
-                          dec=df['dec'].to_numpy()*u.deg,
-                          distance=df['distance_pc'].to_numpy()*u.pc,
-                          frame='icrs')
+    required_columns = {"ra", "dec", "parallax", "bp_rp", "mag"}
+    missing_columns = required_columns.difference(set(df.columns))
+    if missing_columns:
+        raise GaiaDataValidationError(f"Missing required columns: {sorted(missing_columns)}")
 
-        # Get Cartesian coordinates
-        df = df.with_columns([
-            pl.lit(coords.cartesian.x.value).alias('x'),
-            pl.lit(coords.cartesian.y.value).alias('y'),
-            pl.lit(coords.cartesian.z.value).alias('z')
-        ])
+    print(f"Successfully downloaded data for {len(df)} stars.")
+    df = df.with_columns((1000.0 / pl.col("parallax")).alias("distance_pc"))
 
-        # Select and save the final columns
-        output_df = df.select(['x', 'y', 'z', 'bp_rp', 'mag'])
+    print("Converting coordinates and calculating 3D positions.")
+    coords = SkyCoord(
+        ra=df["ra"].to_numpy() * u.deg,
+        dec=df["dec"].to_numpy() * u.deg,
+        distance=df["distance_pc"].to_numpy() * u.pc,
+        frame="icrs",
+    )
 
-        # --- Create data directory and save file ---
-        data_dir = "data"
-        if not os.path.exists(data_dir):
-            print(f"Creating data directory: '{data_dir}'")
-            os.makedirs(data_dir)
-        
-        save_path = os.path.join(data_dir, filename)
-        
-        print(f"Saving data to {save_path}...")
-        output_df.write_csv(save_path)
-        print("Data successfully saved.")
-        
-        return output_df
+    df = df.with_columns(
+        [
+            pl.lit(coords.cartesian.x.value).alias("x"),
+            pl.lit(coords.cartesian.y.value).alias("y"),
+            pl.lit(coords.cartesian.z.value).alias("z"),
+        ]
+    )
 
-    except Exception as e:
-        print(f"An error occurred while querying the Gaia archive: {e}")
-        print("Please check your internet connection and try again.")
-        return None
+    output_df = df.select(["x", "y", "z", "bp_rp", "mag"])
+    assert output_df.height > 0, "output table cannot be empty"
+
+    data_dir = "data"
+    os.makedirs(data_dir, exist_ok=True)
+    save_path = os.path.join(data_dir, filename)
+    print(f"Saving data to {save_path}.")
+    output_df.write_csv(save_path)
+    print("Data successfully saved.")
+    return output_df
+
 
 if __name__ == "__main__":
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        download_gaia_subset() 
+        download_gaia_subset()

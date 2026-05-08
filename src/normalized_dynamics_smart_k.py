@@ -23,6 +23,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from sklearn.neighbors import NearestNeighbors
 import warnings
+from typing import Any
 
 class NormalizedDynamicsSmartK(torch.nn.Module):
     """
@@ -527,7 +528,12 @@ class NormalizedDynamicsSmartK(torch.nn.Module):
         }
 
 # Convenience function for easy testing
-def create_smart_k_algorithm(dataset_size, strategy='smart', kernel_type='exponential', **kwargs):
+def create_smart_k_algorithm(
+    dataset_size: int,
+    strategy: str = 'smart',
+    kernel_type: str = 'exponential',
+    **kwargs: Any,
+) -> NormalizedDynamicsSmartK:
     """
     Create NormalizedDynamicsSmartK with optimal settings for dataset size.
     
@@ -539,6 +545,10 @@ def create_smart_k_algorithm(dataset_size, strategy='smart', kernel_type='expone
             - 'gaussian': K = exp(-d² / (2σ²)) - squared distance decay, standard RBF
         **kwargs: Additional parameters
     """
+    assert isinstance(dataset_size, int), f"dataset_size must be int, got {type(dataset_size)}"
+    if dataset_size <= 0:
+        raise ValueError(f"dataset_size must be > 0, got {dataset_size}")
+
     # Default parameters optimized for smart sampling scenarios
     defaults = {
         'dim': 2,

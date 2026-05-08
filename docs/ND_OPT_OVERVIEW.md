@@ -11,7 +11,7 @@ NormalizedDynamics addresses a fundamental challenge in computational biology: e
 - Time-series biological processes
 - Any scientific data requiring preservation of continuous relationships
 
-## Key Innovation
+## Key algo
 
 The algorithm employs adaptive kernel bandwidth selection that adjusts the number of neighbors based on local data density. This adaptive mechanism helps maintain global connectivity while preserving local structure.
 
@@ -19,28 +19,28 @@ The algorithm employs adaptive kernel bandwidth selection that adjusts the numbe
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/normdyn.git
-cd normdyn
+git clone https://github.com/Gman-Superfly/Normalized_Dynamic_OPT.git
+cd Normalized_Dynamic_OPT
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### Core Dependencies
+### Core dependencies
 - PyTorch (GPU support recommended)
 - NumPy, SciPy, scikit-learn
 - Flask (for web interface)
 - Polars (efficient data processing)
 - Matplotlib, Seaborn (visualization)
 
-### Optional Dependencies
+### Optional dependencies
 - scanpy (biological analysis)
 - UMAP (for comparisons)
 - astroquery/astropy (GAIA data)
 
-## Quick Start
+## Quick start
 
-### Basic Usage
+### Basic usage
 
 ```python
 from src.normalized_dynamics_optimized import NormalizedDynamicsOptimized
@@ -59,7 +59,7 @@ nd = NormalizedDynamicsOptimized(
 X_embedded = nd.fit_transform(X)
 ```
 
-### Smart K Adaptation
+### Smart K adaptation
 
 For automatic parameter tuning based on dataset characteristics:
 
@@ -76,7 +76,7 @@ nd_smart = create_smart_k_algorithm(
 X_embedded = nd_smart.fit_transform(X)
 ```
 
-### Real-Time Streaming
+### Real-time streaming
 
 For sensor data or real-time applications:
 
@@ -89,7 +89,7 @@ for new_point in data_stream:
     embedding = nd.update_embedding(new_point, max_history=500)
 ```
 
-## Web Interface
+## Web interface
 
 Launch the interactive web application:
 
@@ -105,14 +105,14 @@ Navigate to `http://localhost:5000` to access:
 - **Smart Sampling**: Impact of different sampling strategies
 - **Interactive Visualizations**: Explore embeddings in real-time
 
-## Comprehensive Test Suite
+## Comprehensive test suite
 
-### Run All Tests
+### Run all tests
 ```bash
 python src/run_tests.py
 ```
 
-### Specific Test Categories
+### Specific test categories
 
 **Biological Validation:**
 ```bash
@@ -136,14 +136,14 @@ python tests/test_comprehensive_visualizations.py
 
 Results are saved in `tests/results/` and `static/results/`.
 
-## Key Results
+## Key results
 
-### Biological Data (Pancreas Development)
+### Biological data (Pancreas development)
 - **Trajectory Smoothness**: 0.660 (ND) vs 0.696 (t-SNE)
 - **Bifurcation Preservation**: Superior branching point accuracy
 - **Global Connectivity**: Maintains developmental continuity
 
-### Astronomical Data (GAIA)
+### Astronomical data (GAIA)
 - **Geometric Distortion**: 0.0089 (ND) vs 0.0156 (t-SNE)
 - **H-R Diagram Structure**: Better preservation of stellar relationships
 
@@ -152,21 +152,21 @@ Results are saved in `tests/results/` and `static/results/`.
 - **Scalability**: Efficient up to 10,000 samples
 - **GPU Support**: Full PyTorch acceleration
 
-## Algorithm Parameters
+## Algorithm parameters
 
-### Core Parameters
+### Core parameters
 - `dim`: Target embedding dimensions (default: 2)
 - `k`: Base number of neighbors (automatically adapted)
 - `alpha`: Bandwidth scaling (default: 1.0, adaptive)
 - `max_iter`: Maximum iterations (default: 50)
 - `noise_scale`: Stochastic noise level (default: 0.01)
 
-### Adaptive Features
+### Adaptive features
 - **Smart K**: Automatic adjustment based on dataset size and density
 - **Dynamic Alpha**: Adapts to achieve target local structure preservation
 - **Early Stopping**: Cost-based convergence detection
 
-## Project Structure
+## Project structure
 
 ```
 normdyn/
@@ -189,16 +189,17 @@ normdyn/
 
 ## Citation
 
-If you use NormalizedDynamics in your research, please cite:
+If you use this repository in your research, please cite it, this is ongoing work we would like to know your opions and experiments, thank you.
 
-Oscar Goldman (2024). "NormalizedDynamics: A Kernel-Based Algorithm for Biological Trajectory Preservation". Implementation available at: https://github.com/Gman-Superfly/Normalized_Dynamic_OPT.
+Authors: Oscar Goldman - Shogu research Group @ Datamutant.ai subsidiary of 温心重工業
 
-## Future Directions
+## Future directions
 
 - **Theoretical Analysis**: K-independence properties and mathematical foundations
 - **Extended Applications**: Hi-C genomics, spatial transcriptomics, network dynamics
 - **Free Energy Principle**: Connections to information theory and physics
 - **Performance Optimization**: Further scalability improvements
+- **Nystrom approximation**: Implement and validate a landmark-based kernel approximation against the full-kernel baseline. This is the next scaling experiment after smart sampling.
 
 ## Contributing
 

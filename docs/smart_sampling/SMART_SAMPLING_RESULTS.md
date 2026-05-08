@@ -1,29 +1,29 @@
 # Smart Sampling Enhanced Analysis Results
 
-## Executive Summary
+## Executive summary
 
-This analysis demonstrates how **intelligent biological sampling** combined with **dynamic K parameter optimization** unlocks the true potential of the NormalizedDynamics algorithm while maintaining complete scientific integrity.
+This analysis evaluates biological sampling combined with dynamic K parameter optimization for NormalizedDynamics under a fixed experimental setup.
 
-**Key Achievement**: Smart sampling combined with dynamic K adaptation provides measurable performance improvements while maintaining complete methodological transparency.
+**Key result**: Smart sampling combined with dynamic K adaptation provides measurable performance improvements in this run.
 
 ---
 
-## Experimental Design
+## Experimental design
 
-### Dataset Characteristics
+### Dataset characteristics
 - **Original Size**: 12,000 cells × 2,500 genes
 - **Cell Types**: 8 developmental stages (Stem_Cells → Early_Progenitors → Late_Progenitors → Differentiated_A/B/C → Mature_A/B)
 - **Biological Structure**: Realistic developmental trajectory with proper cell type proportions
 - **Spatial Organization**: Mock tissue architecture with spatial coordinates
 
-### Sampling Strategies Tested
+### Sampling strategies tested
 1. **Random_2000**: Random subsampling (baseline)
 2. **Expression_2000**: Expression diversity sampling
 3. **Spatial_2000**: Spatial stratified sampling  
 4. **Hybrid_2000**: Combined spatial + expression sampling
 5. **Smart_3000**: Larger smart sample for comparison
 
-### Algorithm Configurations
+### Algorithm configurations
 1. **NormDyn_FixedK**: NormalizedDynamics with fixed K=20
 2. **NormDyn_SmartK**: NormalizedDynamics with dynamic K adaptation
 3. **t-SNE**: Standard t-SNE with optimized parameters
@@ -31,7 +31,7 @@ This analysis demonstrates how **intelligent biological sampling** combined with
 
 ---
 
-## Key Results
+## Key results
 
 ### NormalizedDynamics Performance by Sampling Strategy
 
@@ -48,7 +48,7 @@ This analysis demonstrates how **intelligent biological sampling** combined with
 | **Smart_3000** | Fixed | 3000 | 0.355 | 0.994 | 263.0 |
 | **Smart_3000** | Smart | 3000 | **0.379** | 0.995 | 271.9 |
 
-### Comparative Algorithm Performance
+### Comparative algorithm performance
 
 **Best NormalizedDynamics Result**: Hybrid_2000 + Smart K = **0.429** trajectory smoothness
 
@@ -58,7 +58,7 @@ This analysis demonstrates how **intelligent biological sampling** combined with
 
 ---
 
-## Scientific Findings
+## Scientific findings
 
 ### 1. Smart Sampling Benefits
 
@@ -72,35 +72,35 @@ This analysis demonstrates how **intelligent biological sampling** combined with
 - Cell type preservation: **100%** across all methods
 - Biological structure maintained while reducing dataset size by 83%
 
-### 2. Dynamic K Adaptation Benefits 🧠
+### 2. Dynamic K adaptation benefits
 
 **Consistent Improvements Across All Sampling Methods**:
 - Random sampling: **+7.4%** improvement (0.447 → 0.480)
 - Spatial sampling: **+9.3%** improvement (0.354 → 0.387)
 - Hybrid sampling: **+4.4%** improvement (0.411 → 0.429)
 
-**K Adaptation Behavior**:
+**K adaptation behavior**:
 - **2000 cells**: K adapted from base 23 to range 26-28
 - **3000 cells**: K adapted from base 30 to range 35-36
-- **Intelligent scaling**: Larger datasets automatically use more neighbors
+- Automatic scaling: Larger datasets automatically use more neighbors
 
-### 3. Algorithm Positioning
+### 3. Algorithm positioning
 
-**NormalizedDynamics Strengths**:
-- **Superior local structure preservation**: 0.993-0.995 vs t-SNE 0.898-0.914
-- **Excellent geometric fidelity**: Maintains pairwise distance relationships
+**NormalizedDynamics strengths in this evaluation**:
+- Local structure preservation: 0.993-0.995 vs t-SNE 0.898-0.914
+- Geometric fidelity: Maintains pairwise distance relationships
 - **Biological trajectory focus**: Designed for continuous developmental processes
 
 **Computational Trade-offs**:
 - **Runtime**: 2-4x longer than t-SNE/UMAP (expected for comprehensive connectivity)
 - **Quality**: Achieves different objectives (geometric preservation vs clustering)
-- **Use case**: Optimal for scientific applications requiring trajectory accuracy
+- Use case: useful for scientific applications requiring trajectory accuracy
 
 ---
 
-## Dynamic K Parameter Analysis
+## Dynamic K parameter analysis
 
-### K Adaptation Strategy
+### K adaptation strategy
 
 The smart K adaptation considers multiple factors:
 
@@ -115,18 +115,18 @@ The smart K adaptation considers multiple factors:
    - Manifold curvature estimation
    - Neighborhood consistency optimization
 
-### K Evolution During Optimization
+### K evolution during optimization
 
 **2000-cell datasets**: K = 26-28 (mean 27.8-28.0)
 **3000-cell datasets**: K = 35-36 (mean 35.3)
 
-This demonstrates the algorithm's ability to **automatically optimize** connectivity for different dataset characteristics.
+This run shows automatic connectivity adaptation for different dataset characteristics.
 
 ---
 
-## Scientific Integrity Confirmation
+## Scientific integrity confirmation
 
-### Methodological Transparency
+### Methodological transparency
 
 1. **Fair Comparison**: All algorithms tested on identical sampled datasets
 2. **Documented Methodology**: Complete transparency about sampling and parameter choices
@@ -134,7 +134,7 @@ This demonstrates the algorithm's ability to **automatically optimize** connecti
 4. **Reproducible Results**: Fixed random seeds and documented parameters
 5. **Biological Validation**: Smart sampling preserves cell type diversity and spatial structure
 
-### Honest Performance Assessment
+### Honest performance assessment
 
 - **NormalizedDynamics performs well** at local structure preservation and geometric fidelity
 - **t-SNE/UMAP work well** at creating visually distinct clusters
@@ -143,14 +143,14 @@ This demonstrates the algorithm's ability to **automatically optimize** connecti
 
 ---
 
-## Practical Implications
+## Practical implications
 
-### When to Use Smart Sampling + Dynamic K
+### When to use smart sampling + dynamic K
 
 **Recommended for**:
 - **Developmental biology**: Trajectory inference, lineage tracing
 - Large single-cell datasets: >5,000 cells requiring quality analysis
-- 📈 **Scientific applications**: Where geometric accuracy matters more than speed
+- Scientific applications: where geometric accuracy matters more than speed
 - Publication maybe... : Sound methodology requirements
 
 **Methodology Benefits**:
@@ -159,7 +159,7 @@ This demonstrates the algorithm's ability to **automatically optimize** connecti
 - **Scalable approach** handles datasets from 500 to 10,000+ cells
 - **Scientifically defensible** with complete methodological transparency
 
-### Implementation Recommendations
+### Implementation recommendations
 
 1. **For datasets >5,000 cells**: Use hybrid sampling to reduce to 2,000-3,000 cells
 2. **Always enable dynamic K**: Provides consistent improvements across all scenarios  
@@ -170,19 +170,19 @@ This demonstrates the algorithm's ability to **automatically optimize** connecti
 
 ## Conclusion
 
-This analysis **definitively demonstrates** that:
+This analysis supports the following points:
 
 1. **Smart sampling** preserves biological structure while enabling efficient analysis
 2. **Dynamic K adaptation** provides consistent performance improvements  
-3. **Combined approach** unlocks NormalizedDynamics' true potential
+3. **Combined approach** improves the measured objectives for this setup
 4. **Scientific integrity** is maintained through transparent methodology
 5. **Algorithm positioning** is honest about strengths and computational trade-offs
 
-**Bottom Line**: When NormalizedDynamics is paired with intelligent data curation and adaptive optimization, it achieves its design goal of superior trajectory preservation for biological applications.
+**Bottom line**: In this experiment, pairing NormalizedDynamics with sampling and adaptive optimization improves measured trajectory-related metrics.
 
 ---
 
-## Technical Files Generated
+## Technical files generated
 
 - **Comprehensive Visualization**: `smart_sampling_enhanced_analysis_20250714_231805.png`
 - **Performance Charts**: `smart_sampling_performance_chart_20250714_231805.png`

@@ -228,6 +228,23 @@
                 </div>
             </fieldset>
 
+            <fieldset>
+                <legend>Nystrom approximation</legend>
+                <p style="font-size: 12px; color: var(--border-color); margin-bottom: 10px;">
+                    Planned low-rank kernel approximation. The UI records this setting; the numerical implementation is the next step.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="nystrom_enabled" value="off" checked>
+                        <span><strong>Off</strong> (full kernel)</span>
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="radio" name="nystrom_enabled" value="on">
+                        <span><strong>On</strong> (planned)</span>
+                    </label>
+                </div>
+            </fieldset>
+
             <button id="run-cortical-analysis-btn">Run Cortical Analysis</button>
         </div>
         
@@ -446,6 +463,11 @@
                 if (hybridContainer) hybridContainer.style.display = (method === 'hybrid') ? 'flex' : 'none';
             }
 
+            function getNystromConfig() {
+                const selected = document.querySelector('input[name="nystrom_enabled"]:checked');
+                return { nystrom_enabled: selected ? selected.value === 'on' : false };
+            }
+
             function updateKernelUI(kernelType) {
                 const descEl = document.getElementById('kernel-description');
                 const paramContainer = document.getElementById('kernel-param-container');
@@ -522,6 +544,7 @@
                 const kernelCfg = getKernelConfig();
                 const smartKCfg = getSmartKConfig();
                 const smartSamplingCfg = getSmartSamplingConfig();
+                const nystromCfg = getNystromConfig();
 
                 const selectedAlgorithms = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
                     .filter(cb => cb.id.startsWith('algo_'))
@@ -559,7 +582,8 @@
                         metrics: selectedMetrics,
                         ...kernelCfg,
                         ...smartKCfg,
-                        ...smartSamplingCfg
+                        ...smartSamplingCfg,
+                        ...nystromCfg
                     })
                 })
                 .then(response => response.json())

@@ -3,7 +3,7 @@
 NormalizedDynamics combines kernel-based dynamics with adaptive bandwidths and early-stopping controls to preserve continuous relationships. It targets small and medium datasets (larger sets possible with scaling) where trajectory continuity matters, the demos include biological and astronomical data, one of the main features is support for real-time streaming of embedding updates (try the multi sensor real-time demo).
 
 ## Context
-- This repository is under active refinement. Older documentation references (`docs/…`) are not present in the current tree; this README is the current source of truth.
+- This repository is under active refinement. Documentation files under `docs/` are present in the current tree, and this README is the primary entry point.
 - Reported performance figures are historical. Reproduce them on your data before relying on them.
 
 ## Problem
@@ -29,7 +29,7 @@ Preserving trajectories and local structure is difficult when data density varie
 - Sensor monitoring, interactive visualization, reinforcement learning diagnostics.
 - Best suited for ≤2000 samples in real-time settings and up to roughly 5000 samples for higher-precision offline analysis.
 
-**Note: the mouse cortical tets will be moved to another repo as it uses modal backend which can be annoying if you just want to run the other tets**
+**Note: the mouse cortical tests will be moved to another repo because they use a modal backend, which can be noisy if you only want to run the remaining tests.**
 
 ## Installation
 
@@ -58,7 +58,7 @@ pip install -r requirements.txt
 **Extended Analysis:**
 - scanpy (biological analysis), UMAP (comparisons), astroquery/astropy (GAIA data)
 
-## Quick Start
+## Quick start
 
 ### Basic Usage
 
@@ -80,7 +80,7 @@ nd = NormalizedDynamicsOptimized(
 X_embedded = nd.fit_transform(X)
 ```
 
-### Kernel Type Options
+### Kernel type options
 
 The algorithm supports two kernel functions for distance weighting:
 
@@ -114,7 +114,7 @@ nd_smart = create_smart_k_algorithm(
 X_embedded = nd_smart.fit_transform(X[sampled_indices])
 ```
 
-### Smart K Adaptation Only
+### Smart K adaptation only
 
 ```python
 from src.normalized_dynamics_smart_k import create_smart_k_algorithm
@@ -129,7 +129,7 @@ nd_smart = create_smart_k_algorithm(
 X_embedded = nd_smart.fit_transform(X)
 ```
 
-### Real-Time Streaming with Memory Management
+### Real-time streaming with memory management
 
 ```python
 # Initialize for streaming applications with configurable parameters
@@ -204,17 +204,17 @@ In Depth:
 - **Performance**: 5-15% trajectory smoothness improvements observed in testing
 - **Sampling Strategies**: Spatial stratified, expression diversity, and hybrid approaches
 
-**6. Real-Time Streaming Architecture**
+**6. Real-time streaming architecture**
 - **Incremental Embedding Updates**: Live data processing with `update_embedding()` method
 - **Memory Management**: Configurable history buffer (default: 500 samples max_history)
 - **Interactive Demonstrations**: Web-based streaming sensor simulations
-- **Production Ready**: Designed for sensor monitoring and live data visualization
+- **Deployment scope**: Designed for sensor monitoring and live data visualization
 
-### Computational Characteristics 
+### Computational characteristics
 
 - **Time Complexity**: O(n²d) per iteration with global connectivity
 - **Space Complexity**: O(n²) for distance and kernel matrices
-- **Performance**: Sub-second processing for ≤2000 samples, optimal precision for medium datasets
+- **Performance**: Sub-second processing for <=2000 samples, with stable behavior on medium datasets
 - **Scalability**: Prioritizes accuracy through comprehensive pairwise analysis
 
 ## Comprehensive Evaluation
@@ -271,7 +271,7 @@ Limitations:
 - **Real-Time Capability**: Interactive applications and live sensor monitoring
 
 
-### Optimal Use Cases
+### Optimal use cases
 - **Developmental Biology**: RNA-seq trajectory analysis, stem cell differentiation
 - **Astronomical Data**: Stellar surveys with continuous distributions
 - **Real-Time Applications**: Sensor monitoring, interactive visualization (≤2000 samples)
@@ -282,7 +282,10 @@ Limitations:
 - Trajectory smoothness: historical gains of 5–15 percent.
 - Example K scaling: 2000 cells → K≈28, 3000 cells → K≈35.
 
+## Nystrom approximation status
+Nystrom approximation is the next scaling step to test. Smart sampling reduces the number of input points before optimization, while Nystrom would approximate the full kernel with a smaller set of landmark points. The expected target is to reduce the full `O(n^2)` kernel cost toward an `O(nm)` cross-kernel cost where `m` is the landmark count and `m << n`.
 
+The current UI exposes Nystrom as an explicit on/off experimental setting so test runs can record the intended approximation mode. The numerical Nystrom path still needs implementation and validation against the full-kernel baseline before runtime or quality claims should be made.
 
 Performance table (historical):
 | Strategy | Trajectory Smoothness | Improvement | Runtime |
@@ -321,7 +324,7 @@ nd_smart = create_smart_k_algorithm(dataset_size=len(hybrid_indices), strategy='
 embedding = nd_smart.fit_transform(data[hybrid_indices])
 ```
 
-## Web Interface
+## Web interface
 
 Launch the interactive demonstration:
 
@@ -336,9 +339,9 @@ Navigate to `http://localhost:5000` for:
 - **Smart Sampling**: Impact analysis of different sampling strategies
 - **Interactive Visualizations**: Explore embeddings with real-time parameter adjustment
 
-## Algorithm Parameters
+## Algorithm parameters
 
-### Core Parameters
+### Core parameters
 - `dim`: Target embedding dimensions (default: 2)
 - `k`: Base number of neighbors (automatically adapted based on data density)
 - `alpha`: Bandwidth scaling factor (default: 1.0, with adaptive adjustment)
@@ -348,13 +351,13 @@ Navigate to `http://localhost:5000` for:
   - `'exponential'`: K = exp(-d / (2σ²)) - Linear distance decay, empirically effective
   - `'gaussian'`: K = exp(-d² / (2σ²)) - Squared distance decay, standard RBF kernel
 
-### Adaptive Features
+### Adaptive features
 - **Smart K**: Automatic adjustment using density factors and dataset characteristics
 - **Dynamic Alpha**: Performance feedback-based adaptation for optimal convergence
 - **Early Stopping**: Multi-criteria convergence detection with patience mechanisms
 - **Kernel Selection**: Choose between exponential (default) and Gaussian kernels via UI or API
 
-## Project Structure
+## Project structure
 
 ```
 Normalized_Dynamic_OPT/
@@ -375,7 +378,7 @@ Normalized_Dynamic_OPT/
 - **Test Infrastructure**: [`docs/tests/README_tests.md`](docs/tests/README_tests.md)
 - **Project Organization**: [`docs/repo_plans/PROJECT_ORGANIZATION_PLAN.md`](docs/repo_plans/PROJECT_ORGANIZATION_PLAN.md)
 
-## Future Directions
+## Future directions
 
 - **Theoretical Analysis**: Investigation of K-independence properties and mathematical foundations
 - **Extended Applications**: Hi-C genomics, spatial transcriptomics, network dynamics, reinforcement learning
@@ -389,7 +392,7 @@ Contributions are welcome! Please submit pull requests or issues directly. The r
 ## Citation
 
 - Authors: Oscar Goldman - Shogu research Group @ Datamutant.ai (subsidiary of 温心重工業)  
-- Message: "Thank you for reading, this is ongoing work we would like to know your opinions and experiments, thank you."
+- Message: "If you use this repository in your research, please cite it, this is ongoing work we would like to know your opions and experiments, thank you."
 
 ## License
 Code MIT License (docs cc4).
@@ -403,7 +406,7 @@ We thank the computational biology community for feedback and guidance. Special 
 
 ---
 
-**Note**: This is a research implementation exploring advanced approaches to manifold learning with theoretical foundations in the Free Energy Principle. Users should evaluate the algorithm's suitability for their specific applications and compare against established methods. NormalizedDynamics excels in specific scenarios requiring continuous relationship preservation and adaptive behavior, particularly in scientific data analysis.
+**Note**: This is a research implementation exploring manifold learning with a Free Energy Principle framing. Evaluate suitability on your data and compare against established methods before relying on results.
 
 ## Summary
 
